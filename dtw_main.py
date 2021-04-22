@@ -43,33 +43,82 @@ with open('root_mocap.csv', newline='') as csvfile:
 x = np.asarray(x)
 y = np.asarray(y)
 
-curve = np.arange(0, math.pi / 2, .05)
+# 0 -> pi/2
+# pi/2 -> pi
+# pi -> 3/2 * ip
+# 3/2 * pi -> 2 * pi
+
+start = [0, math.pi / 2, math.pi, (3 * math.pi) / 2]
+end = [math.pi / 2, math.pi, (3 * math.pi) / 2, 2 * math.pi]
+
+curves_x = []
+curves_y = []
+
+for i in range(0, 4):
+    temp_x = np.arange(start[i], end[i], .05)
+    curves_x.append(temp_x - (i * math.pi / 2))
+    curves_y.append(np.sin(temp_x))
+
+temp = np.arange(0, math.pi / 2, .05)
+curves_x.append(temp)
+curves_y.append(np.zeros(temp.shape))
+
+curves_y.append(temp)
+curves_x.append(np.zeros(temp.shape))
+        
+fig, axs = plt.subplots(2, 3)
+
+for i in range(0, 2):
+    for j in range(0, 3):
+        k = i * 3 + j
+        axs[i, j].plot(curves_x[k], curves_y[k])
+        axs[i, j].set_title('Axis ' + str(k))
+
+fig.savefig("curves.png")
+
 d = 999999.0
 
-printProgressBar(0, len(y) - len(curve), prefix = 'Progress:', suffix = 'Complete', length = 50)
+resolution = len(np.arange(0, math.pi / 2, .05))
 
-for i in range(0, len(y) - len(curve)): 
-    printProgressBar(i, len(y) - len(curve), prefix = 'Progress:', suffix = 'Complete')
-    #s1 = np.vstack((x, np.sin(x))).T
-    #s2 = np.vstack((x, np.sin(x - 1))).T
+for i in range(0, 6):
 
-    s1_new = np.sin(curve)  #stats.zscore(np.sin(x))
-    s2_new = y[i:len(s1_new)+i] #np.sin(y) #stats.zscore(np.sin(y))
+    sx_new = curves_x[i]
+    sy_new = curves_y[i]
 
-    #d, p = dtw_ndim.warping_paths(s1, s2)
-    d_new, p_new = dtw.warping_paths(s1_new, s2_new) #, window=25, psi=2)
+    printProgressBar(0, len(y) - len(sx_new), prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-    if (d_new < d):
-        d = d_new
-        
-        p = p_new
+    for j in range(0, len(y) - len(sx_new)): 
+        printProgressBar(j, len(y) - len(sx_new), prefix = 'Progress:', suffix = 'Complete')
 
-        s1 = s1_new
-        s2 = s2_new
+        x_mocap = x[j:len(sx_new) + j] 
+        y_mocap = y[j:len(sy_new) + j] 
 
-print(d)
-best_path = dtw.best_path(p)
-fig, ax = dtwvis.plot_warpingpaths(s1, s2, p)
-fig2, ax2 = dtwvis.plot_warping(s1, s2, best_path)
-plt.show()
+        dx_new, px_new = dtw.warping_paths(sx_new, x_mocap)
+        dy_new, py_new = dtw.warping_paths(sy_new, y_mocap)
+
+        d_new = dx_new + dy_new
+
+        if (d_new < d):
+            d = d_new
+            
+            px = px_new
+            py = py_new
+
+            sx = sx_new
+            sy = sy_new
+            sx_mocap = x_mocap
+            sy_mocap = y_mocap
+
+    best_path_x = dtw.best_path(px)
+    fig_x, ax_x = dtwvis.plot_warpingpaths(sx, sx_mocap, px)
+    fig2_x, ax2_x = dtwvis.plot_warping(sx, sx_mocap, best_path_x)
+
+    best_path_y = dtw.best_path(py)
+    fig_y, ax_y = dtwvis.plot_warpingpaths(sy, sy_mocap, py)
+    fig2_y, ax2_y = dtwvis.plot_warping(sy, sy_mocap, best_path_y)
+    
+    fig_x.savefig(str(i) + "x.png")
+    fig2_x.savefig(str(i) + "x_2.png")
+    fig_y.savefig(str(i) + "y.png")
+    fig2_y.savefig(str(i) + "y_2.png")
 
