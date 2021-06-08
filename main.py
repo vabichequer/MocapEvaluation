@@ -1,50 +1,46 @@
+from matplotlib.text import Annotation
 import numpy as np
 import matplotlib.pyplot as plt
 import math 
 import csv
+import sys
+from distutils.util import strtobool
 
-ANNOTATE = False
+if (len(sys.argv) < 6):
+    print("ERROR: Not enough arguments. The program expects 5 arguments: <bool> graphical time annotation, <float> frequency (Hz), <string> CSV file name, <bool> headers?, <int> source (0: UMANS, 1: Mocap (Xsens)")
 
-f = 120
+ANNOTATE = strtobool(sys.argv[1])
+f = float(sys.argv[2])
+csv_file_name = str(sys.argv[3])
+skip_header = strtobool(sys.argv[4])
+source = int(sys.argv[5])
+
 dt = 1/f
+if (source == 0):
+    y_pos = 2
+else:
+    y_pos = 3
 
 print('*' * 25)
 print("Program setup:")
+print("Time annotation: ", ANNOTATE)
 print("Frequency (Hz): ", f)
-print("dt: ", dt)
+print("CSV file name: ", csv_file_name)
+print("Headers: ", skip_header)
+print("Source: ", source)
+print("dT: ", dt)
 print('*' * 25)
-
-# Print iterations progress
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
 
 x = []
 y = []
 
-with open('root_mocap.csv', newline='') as csvfile:
+with open(csv_file_name, newline='') as csvfile:
     read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
-    next(read_csv, None) # skipping the first line
+    if (skip_header):
+        next(read_csv, None) # skipping the first line
     for i, row in enumerate(read_csv):
         x.append(float(row[1]))
-        y.append(float(row[3]))
+        y.append(float(row[y_pos]))
 
 x = np.asarray(x)
 y = np.asarray(y)
@@ -92,6 +88,5 @@ if (ANNOTATE):
         if (i % 10 == 0):
             ax.annotate("%.2f" % txt, (theta[i], speed[i]))
         txt += 0.1
-
 
 plt.show()
