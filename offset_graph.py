@@ -1,73 +1,94 @@
+from operator import contains
 from matplotlib.text import Annotation
 import numpy as np
 import matplotlib.pyplot as plt
-import math 
+from matplotlib.offsetbox import AnchoredText
 import csv
-import sys
-from distutils.util import strtobool
+from pathlib import Path
 
-if (False):
-    if (len(sys.argv) < 6):
-        print("ERROR: Not enough arguments. The program expects 5 arguments: <bool> graphical time annotation, <float> frequency (Hz), <string> CSV file name, <bool> headers?, <int> source (0: UMANS, 1: Mocap (Xsens)")
-
-    ANNOTATE = strtobool(sys.argv[1])
-    f = float(sys.argv[2])
-    csv_file_name = str(sys.argv[3])
-    skip_header = strtobool(sys.argv[4])
-    source = int(sys.argv[5])
-
-    dt = 1/f
-    if (source == 0):
-        y_pos = 2
-    else:
-        y_pos = 3
-
-    print('*' * 25)
-    print("Program setup:")
-    print("Time annotation: ", ANNOTATE)
-    print("Frequency (Hz): ", f)
-    print("CSV file name: ", csv_file_name)
-    print("Headers: ", skip_header)
-    print("Source: ", source)
-    print("dT: ", dt)
-    print('*' * 25)
-
+def read_csv(read_time, angle, prefix="", sufix=""):
     x = []
     y = []
-    time = []
-
-    with open(csv_file_name, newline='') as csvfile:
+    t = []
+    with open(FOLDER_FILES + '/' + prefix + str(angle) + sufix + ".csv", newline='') as csvfile:
         read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
-        if (skip_header):
-            next(read_csv, None) # skipping the first line
-        for i, row in enumerate(read_csv):
-            time.append(float(row[0]))
-            x.append(float(row[1]))
-            y.append(float(row[y_pos]))
+        for row in read_csv:
+            if (read_time):
+                if (len(row) == 4 and "" not in row):
+                    t.append(float(row[0]))
+                    x.append(float(row[1]))
+                    y.append(float(row[3]))
+                else:
+                    print("Error in row", row, "File", prefix, angle, sufix)
+            else:
+                if (len(row) == 3 and "" not in row):
+                    x.append(float(row[0]))
+                    y.append(float(row[2]))
+                else:
+                    print("Error in row", row, "File", prefix, angle, sufix)
+    
+    csvfile.close()
 
-    x = np.asarray(x)
-    y = np.asarray(y)
-    time = np.asarray(time)
+    if (read_time):
+        return np.asarray(x), np.asarray(y), np.asarray(t)
+    else:
+        return np.asarray(x), np.asarray(y)
+
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
 angles = [0, 15, 30, 45, 60, 75]
 
-x = np.arange(0, 10, 0.1)
+x_planned = []
+y_planned = []
+x_final = []
+y_final = []
+time = []
+
+y_interp = []
+diff = []
 
 for a in angles:
-    y = (x * math.tan(math.radians(a))) ** (1/2)
+    x_p, y_p = read_csv(False, a, sufix="_planned")
+    x_f, y_f, t = read_csv(True, a, prefix="Robot Kyle_")
 
-    for i in range(1, len(y)):
-        if (i % 3 == 0):
-            dy = y[i] - y[i - 1]
-            dx = x[i] - x[i - 1]
+    if (x_p[-1] < x_f[-1]):
+        boolean_slicer = [x_f < x_p[-1]]
+    else:
+        boolean_slicer = [x_p < x_f[-1]]     
 
-            tangent_angle = math.atan2(dy, dx)
+    x_f = x_f[boolean_slicer]
+    y_f = y_f[boolean_slicer]
+    t = t[boolean_slicer]
 
-            x_len, y_len = math.cos(tangent_angle) / 8, math.sin(tangent_angle) / 8
-                    
-            plt.arrow(x[i], y[i], x_len, y_len, width = 0.02, color="C1")
+    interp = np.interp(x_f, x_p, y_p)
 
-    plt.plot(x, y)
+    y_interp.append(interp)
 
+    x_planned.append(x_p)
+    y_planned.append(y_p)
+    x_final.append(x_f)
+    y_final.append(y_f)
+    time.append(t)
+
+    diff.append(y_f - interp)
+
+
+
+fig, axs = plt.subplots(2, 3)
+
+axs = axs.ravel()
+
+for i in range(0, len(x_planned)):
+    axs[i].set_title(str(angles[i]) + " degrees curve")
+    axs[i].plot(x_planned[i], y_planned[i], label="planned")
+    axs[i].plot(x_final[i], y_final[i], label="final")    
+    axs[i].plot(x_final[i], y_final[i] - y_interp[i], label="area difference", color="black")
+    axs[i].fill_between(x_final[i], y_final[i], y_interp[i], facecolor="none", hatch = '//', edgecolor="black")
+    axs[i].set_xlabel("X")
+    axs[i].set_ylabel("Y")
+    axs[i].set_ylim(-1, max(y_final[i]) * 1.1)
+    anchored_text = AnchoredText(str(round(sum(diff[i]), 2)) + " m²", loc='lower right')
+    axs[i].add_artist(anchored_text)
+    axs[i].legend()
 
 plt.show()
