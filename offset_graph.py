@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 import csv
 from pathlib import Path
+from scipy.spatial import distance
 
 def read_csv(read_time, angle, prefix="", sufix=""):
     x = []
@@ -36,7 +37,7 @@ def read_csv(read_time, angle, prefix="", sufix=""):
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-angles = [0, 15, 30, 45, 60, 75]
+angles = [5, 10, 15, 20, 25, 30]
 
 x_planned = []
 y_planned = []
@@ -49,16 +50,18 @@ diff = []
 
 for a in angles:
     x_p, y_p = read_csv(False, a, sufix="_planned")
-    x_f, y_f, t = read_csv(True, a, prefix="Robot Kyle_")
+    x_f, y_f, t = read_csv(True, a, sufix="_final")
 
-    if (x_p[-1] < x_f[-1]):
-        boolean_slicer = [x_f < x_p[-1]]
-    else:
-        boolean_slicer = [x_p < x_f[-1]]     
+    #distance()]
 
-    x_f = x_f[boolean_slicer]
-    y_f = y_f[boolean_slicer]
-    t = t[boolean_slicer]
+    # if (x_p[-1] < x_f[-1]):
+    #     boolean_slicer = [x_f < x_p[-1]]
+    # else:
+    #     boolean_slicer = [x_p < x_f[-1]]     
+
+    # x_f = x_f[boolean_slicer]
+    # y_f = y_f[boolean_slicer]
+    # t = t[boolean_slicer]
 
     interp = np.interp(x_f, x_p, y_p)
 
@@ -86,7 +89,7 @@ for i in range(0, len(x_planned)):
     axs[i].fill_between(x_final[i], y_final[i], y_interp[i], facecolor="none", hatch = '//', edgecolor="black")
     axs[i].set_xlabel("X")
     axs[i].set_ylabel("Y")
-    axs[i].set_ylim(-1, max(y_final[i]) * 1.1)
+    #axs[i].set_ylim(-1, max(y_final[i]) * 1.1)
     anchored_text = AnchoredText(str(round(sum(diff[i]), 2)) + " m²", loc='lower right')
     axs[i].add_artist(anchored_text)
     axs[i].legend()

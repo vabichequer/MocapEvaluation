@@ -5,6 +5,7 @@ import math
 import csv
 import sys
 from distutils.util import strtobool
+from scipy.stats import gaussian_kde
 
 if (len(sys.argv) < 6):
     print("ERROR: Not enough arguments. The program expects 5 arguments: <bool> graphical time annotation, <float> frequency (Hz), <string> CSV file name, <bool> headers?, <int> source (0: UMANS, 1: Mocap (Xsens)")
@@ -76,10 +77,23 @@ for i in range(1, len(x)):
 
     theta.append(dtheta / dt)
 
+speed = np.asarray(speed)
+theta = np.asarray(theta)
+
 fig, ax = plt.subplots()
 plt.ylabel("Speed (m/s)")
 plt.xlabel("Turning speed (degrees/s)")
-plt.scatter(theta, speed, marker='+')
+
+# Calculate density based on a gaussial kernel density estimate, which works like a histogram
+xy = np.vstack([theta, speed])
+z = gaussian_kde(xy)(xy)
+
+# Sort denser points to be printed last, thus showing them on top
+idx = z.argsort()
+theta, speed, z = theta[idx], speed[idx], z[idx]
+
+sc = plt.scatter(theta, speed, c=z)
+plt.colorbar(sc)
 
 
 if (ANNOTATE):
