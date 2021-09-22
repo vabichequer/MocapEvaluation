@@ -37,7 +37,7 @@ def read_csv(read_time, angle, prefix="", sufix=""):
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-angles = [5, 10, 15, 20, 25, 30]
+angles = [5, 10, 15]
 
 x_planned = []
 y_planned = []
