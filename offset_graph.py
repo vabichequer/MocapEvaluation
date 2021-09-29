@@ -77,7 +77,7 @@ for a in angles:
 
 
 
-fig, axs = plt.subplots(2, 3)
+fig, axs = plt.subplots(1, 3)
 
 axs = axs.ravel()
 
@@ -85,8 +85,8 @@ for i in range(0, len(x_planned)):
     axs[i].set_title(str(angles[i]) + " degrees curve")
     axs[i].plot(x_planned[i], y_planned[i], label="planned")
     axs[i].plot(x_final[i], y_final[i], label="final")    
-    axs[i].plot(x_final[i], y_final[i] - y_interp[i], label="area difference", color="black")
-    axs[i].fill_between(x_final[i], y_final[i], y_interp[i], facecolor="none", hatch = '//', edgecolor="black")
+    #axs[i].plot(x_final[i], y_final[i] - y_interp[i], label="area difference", color="black")
+    axs[i].fill_between(x_final[i], y_interp[i], y_final[i], facecolor="none", hatch = '//', edgecolor="black")
     axs[i].set_xlabel("X")
     axs[i].set_ylabel("Y")
     #axs[i].set_ylim(-1, max(y_final[i]) * 1.1)

@@ -31,6 +31,9 @@ def using_mpl_scatter_density(fig, x, y):
             txt += 0.1
 
     fig.colorbar(density, label='Number of points per pixel')
+    ax.set_ylabel("Linear speed (m/s)")
+    ax.set_xlabel("Turning speed (degrees/s)")
+    ax.set_title("Speed coverage map")
 
 def magnitude(vector): 
     return math.sqrt(sum(pow(element, 2) for element in vector))
@@ -143,18 +146,18 @@ speed = np.asarray(speed)
 theta = np.asarray(theta)
 
 fig = plt.figure()
-plt.ylabel("Speed (m/s)")
-plt.xlabel("Turning speed (degrees/s)")
 using_mpl_scatter_density(fig, theta, speed)
 
 
 fig = plt.figure()
 plt.ylabel("Turning speed (degrees/s)")
+plt.title("Turning speed (degrees/s) vs time (s)")
 plt.plot([i for i in range(0, len(theta))], theta)
 
 
 fig = plt.figure()
-plt.ylabel("Velocity (m/s)")
+plt.ylabel("Linear speed (m/s)")
+plt.title("Linear speed (m/s) vs time (s)")
 plt.plot([i for i in range(0, len(speed))], speed)
 plt.plot([i for i in range(0, len(speed))], [speed.mean() for i in range(0, len(speed))])
 plt.show()
