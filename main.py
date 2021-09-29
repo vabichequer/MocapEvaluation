@@ -8,6 +8,14 @@ from distutils.util import strtobool
 import mpl_scatter_density # adds projection='scatter_density'
 from matplotlib.colors import LinearSegmentedColormap
 
+### ARGUMENTS ###
+# <bool> graphical time annotation
+# <float> frequency (Hz) (Unity or float in Hz)
+# <string> CSV file name
+# <bool> has headers
+# <int> source (0: UMANS, 1: Mocap (Xsens)) 
+# <int> sampling rate
+
 # "Viridis-like" colormap with white background
 white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
     (0, '#ffffff'),
@@ -105,42 +113,48 @@ ry = np.asarray(ry)
 
 speed = []
 theta = []
+all_dt_arrays = []
 
 if(CALCULATE_DT):
     dt_array = []
     for i in range(1, len(t)):
-        dt_array.append(t[i] - t[i - 1])
+        if t[i - 1] < t[i]:
+            dt_array.append(t[i] - t[i - 1])
+        else:
+            all_dt_arrays.append(dt_array)
+    all_dt_arrays.append(dt_array)
 
-dx = []
-dy = []
+for dt_array in all_dt_arrays:
+    dx = []
+    dy = []
 
-orientation = []
-orientation.append(0)
+    orientation = []
+    orientation.append(0)
 
-for i in range(1, len(x)):
-    dx.append(x[i] - x[i - 1])
-    dy.append(y[i] - y[i - 1])
+    for i in range(1, len(dt_array)):
+        dx.append(x[i] - x[i - 1])
+        dy.append(y[i] - y[i - 1])
 
-    if (CALCULATE_DT):
-        orientation.append(ry[i - 1])
-    else:
-        orientation.append(math.degrees(math.atan2(dy[i - 1], dx[i - 1]))) #t1 - t0
+        if (CALCULATE_DT):
+            orientation.append(ry[i - 1])
+        else:
+            orientation.append(math.degrees(math.atan2(dy[i - 1], dx[i - 1]))) #t1 - t0
 
-for i in range(1, len(x)):
-    if (CALCULATE_DT):
-        dt = dt_array[i - 1]
+    for i in range(1, len(dt_array)):
+        if (CALCULATE_DT):
+            dt = dt_array[i - 1]
 
-    dtheta = orientation[i] - orientation[i - 1]
+        dtheta = orientation[i] - orientation[i - 1]
 
-    if (dtheta >= 180):
-        dtheta -= 360
-    elif (dtheta <= -180):
-        dtheta += 360
+        if (dtheta >= 180):
+            dtheta -= 360
+        elif (dtheta <= -180):
+            dtheta += 360
 
-    speed.append(magnitude([dx[i - 1], dy[i - 1]]) / dt)
-    theta.append(dtheta / dt)
-    #if (abs(theta[i - 1]) > 180):
-        #print(i, dtheta, dt, theta[i - 1], orientation[i], orientation[i - 1])
+        speed.append(magnitude([dx[i - 1], dy[i - 1]]) / dt)
+        theta.append(dtheta / dt)
+        #if (abs(theta[i - 1]) > 180):
+            #print(i, dtheta, dt, theta[i - 1], orientation[i], orientation[i - 1])
 
 speed = np.asarray(speed)
 theta = np.asarray(theta)
