@@ -155,9 +155,6 @@ for i in range(0, len(all_dt_arrays)):
     
     orientation.append(ry_array[0])
 
-    print(dt_array)    
-    print('-'*25)
-
     for i in range(1, len(dt_array)):
         dx.append(x_array[i] - x_array[i - 1])
         dy.append(y_array[i] - y_array[i - 1])
