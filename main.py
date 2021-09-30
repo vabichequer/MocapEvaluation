@@ -114,29 +114,56 @@ ry = np.asarray(ry)
 speed = []
 theta = []
 all_dt_arrays = []
+all_x_arrays = []
+all_y_arrays = []
+all_ry_arrays = []
 
 if(CALCULATE_DT):
     dt_array = []
+    x_array = []
+    y_array = []
+    ry_array = []
+
     for i in range(1, len(t)):
         if t[i - 1] < t[i]:
             dt_array.append(t[i] - t[i - 1])
+            x_array.append(x[i])
+            y_array.append(y[i])
+            ry_array.append(ry[i])
         else:
             all_dt_arrays.append(dt_array)
+            all_x_arrays.append(x_array)
+            all_y_arrays.append(y_array)
+            all_ry_arrays.append(ry_array)
+            dt_array = []
+            x_array = []
+            y_array = []
+            ry_array = []
     all_dt_arrays.append(dt_array)
+    all_x_arrays.append(x_array)
+    all_y_arrays.append(y_array)
+    all_ry_arrays.append(ry_array)
 
-for dt_array in all_dt_arrays:
+for i in range(0, len(all_dt_arrays)):    
+    dt_array = all_dt_arrays[i]
+    x_array = all_x_arrays[i]
+    y_array = all_y_arrays[i]
+    ry_array = all_ry_arrays[i]
     dx = []
     dy = []
-
     orientation = []
-    orientation.append(0)
+    
+    orientation.append(ry_array[0])
+
+    print(dt_array)    
+    print('-'*25)
 
     for i in range(1, len(dt_array)):
-        dx.append(x[i] - x[i - 1])
-        dy.append(y[i] - y[i - 1])
+        dx.append(x_array[i] - x_array[i - 1])
+        dy.append(y_array[i] - y_array[i - 1])
 
         if (CALCULATE_DT):
-            orientation.append(ry[i - 1])
+            orientation.append(ry_array[i - 1])
         else:
             orientation.append(math.degrees(math.atan2(dy[i - 1], dx[i - 1]))) #t1 - t0
 
