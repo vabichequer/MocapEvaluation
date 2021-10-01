@@ -70,7 +70,7 @@ CALCULATE_DT = False
 csv_file_name = sys.argv[3].split(',')
 skip_header = strtobool(sys.argv[4])
 source = int(sys.argv[5])
-sampling = int(sys.argv[6])
+sampling = [int(x) for x in sys.argv[6].split(',')]
 
 if (sys.argv[2] == "Unity"):
     CALCULATE_DT = True
@@ -100,7 +100,7 @@ print('*' * 25)
 speed_arrays = []
 theta_arrays = []
 
-for file in csv_file_name:
+for file_idx, file in enumerate(csv_file_name):
     x = []
     y = []
     ry = []
@@ -113,22 +113,27 @@ for file in csv_file_name:
         t_var = 0     
         actual_sample = 0
         for i, row in enumerate(read_csv):   
-            if (sampling > actual_sample):
+            if (sampling[file_idx] > actual_sample):
                 if (CALCULATE_DT):
                     t_var += float(row[0])
                 actual_sample += 1
             else:
                 x.append(float(row[1]))
                 y.append(float(row[y_pos]))
+                ry.append(float(row[5]))
                 if (CALCULATE_DT):
                     t.append(float(row[0]) + t_var)
-                    ry.append(float(row[5]))
                     t_var = 0
                 actual_sample = 0
 
     x = np.asarray(x)
     y = np.asarray(y)
     ry = np.asarray(ry)
+
+    print("t size: ", len(t))
+    print("X size: ", len(x))
+    print("Y size: ", len(y))
+    print("RY size: ", len(ry))
 
     speed = []
     theta = []

@@ -83,7 +83,7 @@ axs = axs.ravel()
 
 for i in range(0, len(x_planned)):
     axs[i].set_title(str(angles[i]) + " degrees curve")
-    axs[i].plot(x_planned[i], y_planned[i], label="planned")
+    #axs[i].plot(x_planned[i], y_planned[i], label="planned")
     axs[i].plot(x_final[i], y_final[i], label="final")    
     #axs[i].plot(x_final[i], y_final[i] - y_interp[i], label="area difference", color="black")
     axs[i].fill_between(x_final[i], y_interp[i], y_final[i], facecolor="none", hatch = '//', edgecolor="black")
