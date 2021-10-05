@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import csv
 from pathlib import Path
 import collections
+import numpy as np
 
 def read_csv(angle, prefix="", sufix=""):
     frame_collection = []
@@ -30,11 +31,28 @@ def read_csv(angle, prefix="", sufix=""):
     csvfile.close()
     return frame_collection
 
+def PieChart(labels, sizes):
+    plt.figure()
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90)
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+def autolabel(rects):
+    # attach some text labels
+    for rect in rects:
+        height = rect.get_height()
+        plt.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+                '%d' % int(height),
+                ha='center', va='bottom')
+
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
 angles = [5]#, 10, 15]
 
 occurences = {}
+
+blend_statuses = []
 
 for a in angles:
     frames = read_csv(a, sufix="_stats")
@@ -42,12 +60,29 @@ for a in angles:
 
     for frame in frames:
         for channel in frame:
+            blend_statuses.append(channel['BlendStatus'])
+
             if (channel['BlendStatus'] == "Dominant"):
                 clips.append(channel['Primary clip'])
                 break
         
-    occurences = collections.Counter(clips)
-    print(occurences)
+    occurences_clips = collections.Counter(clips)
+    occurences_statuses = collections.Counter(blend_statuses)
+    print(occurences_clips)   
+    print(occurences_statuses)    
 
-plt.bar(occurences.keys(), occurences.values(), color='b')
-plt.show()
+    labels = 'Used', 'Not used'
+    sizes = [len(occurences_clips), 37]
+    PieChart(labels, sizes)
+    PieChart(occurences_statuses.keys(), occurences_statuses.values())
+
+    clips = np.asarray(clips)
+    number_of_transitions = len(np.where(np.roll(clips,1)!=clips)[0])
+    
+    occurences_clips['Transitions'] = number_of_transitions
+
+    bar_fig = plt.figure()
+    barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
+    autolabel(barlist)
+    barlist[-1].set_color('r')
+    plt.show()
