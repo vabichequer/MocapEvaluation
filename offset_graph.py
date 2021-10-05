@@ -37,7 +37,7 @@ def read_csv(read_time, angle, prefix="", sufix=""):
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-angles = [5, 10, 15]
+angles = [5]#, 10, 15]
 
 x_planned = []
 y_planned = []
@@ -46,7 +46,11 @@ y_final = []
 time = []
 
 y_interp = []
-diff = []
+
+all_x_offsets = []
+all_y_offsets = []
+
+tolerance = 0
 
 for a in angles:
     x_p, y_p = read_csv(False, a, sufix="_planned")
@@ -73,9 +77,20 @@ for a in angles:
     y_final.append(y_f)
     time.append(t)
 
-    diff.append(y_f - interp)
+    t = np.asarray(t).astype(int)
+    idx_of_changes = np.where(np.roll(t,1)!=t)[0]
 
+    idx_of_changes = idx_of_changes[:len(x_p)]
 
+    x_offset = x_p - x_f[idx_of_changes]
+    y_offset = y_p - y_f[idx_of_changes]
+
+    steps = np.linalg.norm(np.asarray([[x_offset], [y_offset]]), axis=1)
+
+    #steps = steps[0, :] + steps[1, :]
+
+    all_x_offsets.append(np.square(steps[0, :] - tolerance))
+    all_y_offsets.append(np.square(steps[1, :] - tolerance))
 
 fig, axs = plt.subplots(1, 3)
 
@@ -90,8 +105,27 @@ for i in range(0, len(x_planned)):
     axs[i].set_xlabel("X")
     axs[i].set_ylabel("Y")
     #axs[i].set_ylim(-1, max(y_final[i]) * 1.1)
-    anchored_text = AnchoredText(str(round(sum(diff[i]), 2)) + " m²", loc='lower right')
-    axs[i].add_artist(anchored_text)
+    axs[i].legend()
+
+fig, axs = plt.subplots(1, 3)
+
+axs = axs.ravel()
+
+for i in range(0, len(angles)):
+    axs[i].set_title(str(angles[i]) + " degrees curve offset")
+    #axs[i].plot(x_planned[i], y_planned[i], label="planned")
+    axs[i].plot(range(0, len(all_x_offsets[i])), all_x_offsets[i], label="X offset", marker="o")
+    axs[i].plot(range(0, len(all_y_offsets[i])), all_y_offsets[i], label="Y offset", marker="o")
+    #axs[i].plot(x_final[i], y_final[i] - y_interp[i], label="area difference", color="black")
+    axs[i].grid()
+    #axs[i].set_ylim(-1, max(y_final[i]) * 1.1)
+    # Residual sum of squares
+    anchored_text1 = AnchoredText("RSS_y: " + str(round(np.sum(all_y_offsets[i]), 2)), loc='lower right')
+    anchored_text2 = AnchoredText("RSS_x: " + str(round(np.sum(all_x_offsets[i]), 2)), loc='lower left')
+    axs[i].add_artist(anchored_text1)
+    axs[i].add_artist(anchored_text2)
+    axs[i].set_ylabel("Squared error")
+    axs[i].set_xlabel("Trajectory point")
     axs[i].legend()
 
 plt.show()
