@@ -4,16 +4,13 @@ import matplotlib.pyplot as plt
 import math 
 import csv
 import sys
+from pathlib import Path
 from distutils.util import strtobool
 import mpl_scatter_density # adds projection='scatter_density'
 from matplotlib.colors import LinearSegmentedColormap
 
 ### ARGUMENTS ###
-# <bool> graphical time annotation
-# <float> frequency (Hz) (Unity or float in Hz)
 # <string> CSV file name
-# <bool> has headers
-# <int> source (0: UMANS, 1: Mocap (Xsens)) 
 # <int> sampling rate
 
 # "Viridis-like" colormap with white background
@@ -31,13 +28,6 @@ def using_mpl_scatter_density(fig, x, y):
     ax = fig.add_subplot(1, 1, 1, projection='scatter_density')
     density = ax.scatter_density(x, y, cmap=white_viridis)
 
-    if (ANNOTATE):
-        txt = 0.1
-        for i in range(0, len(speed)):
-            if (i % 10 == 0):
-                ax.annotate("%.2f" % txt, (theta[i], speed[i]))
-            txt += 0.1
-
     fig.colorbar(density, label='Number of points per pixel')
     ax.set_ylabel("Linear speed (m/s)")
     ax.set_xlabel("Turning speed (degrees/s)")
@@ -47,13 +37,6 @@ def scatter(fig, x, y, alpha, color):
     ax = fig.add_subplot(1, 1, 1)
     ax.scatter(x, y, alpha=alpha, c=color)
 
-    if (ANNOTATE):
-        txt = 0.1
-        for i in range(0, len(speed)):
-            if (i % 10 == 0):
-                ax.annotate("%.2f" % txt, (theta[i], speed[i]))
-            txt += 0.1
-
     ax.set_ylabel("Linear speed (m/s)")
     ax.set_xlabel("Turning speed (degrees/s)")
     ax.set_title("Speed coverage map")
@@ -61,44 +44,35 @@ def scatter(fig, x, y, alpha, color):
 def magnitude(vector): 
     return math.sqrt(sum(pow(element, 2) for element in vector))
 
-if (len(sys.argv) < 7):
-    print("ERROR: Not enough arguments. The program expects 6 arguments: <bool> graphical time annotation, <float> frequency (Hz), <string> CSV file name, <bool> headers?, <int> source (0: UMANS, 1: Mocap (Xsens)), <int> sampling rate")
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-ANNOTATE = strtobool(sys.argv[1])
-CALCULATE_DT = False
+animation_dataset_file = sys.argv[1]
+radius = sys.argv[2].split(',')
+sampling = [int(x) for x in sys.argv[3].split(',')]
 
-csv_file_name = sys.argv[3].split(',')
-skip_header = strtobool(sys.argv[4])
-source = int(sys.argv[5])
-sampling = [int(x) for x in sys.argv[6].split(',')]
-
-if (sys.argv[2] == "Unity"):
-    CALCULATE_DT = True
-    f = "Unity"
-    dt = "Not defined yet"
-else:
-    f = float(sys.argv[2])
-    dt = 1 / (f / sampling)
-
-
-
-if (source == 0):
-    y_pos = 2
-else:
-    y_pos = 3
+csv_file_name = []
+csv_file_name.append(animation_dataset_file)
+for r in radius:
+    csv_file_name.append(r + "_final.csv")
 
 print('*' * 25)
 print("Program setup:")
-print("Time annotation: ", ANNOTATE)
-print("Frequency (Hz): ", f)
-print("CSV file name: ", csv_file_name)
-print("Headers: ", skip_header)
-print("Source: ", source)
-print("dT: ", dt)
+print("CSV files names: ", csv_file_name)
 print('*' * 25)
 
 speed_arrays = []
 theta_arrays = []
+
+def read_csv(radius, prefix="", sufixes=""):
+    info = {}
+    for sufix in sufixes:
+        with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
+            read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
+            if (sufix == "info"):            
+                for row in read_csv:
+                    info[row[0]] = float(row[1])
+        csvfile.close()
+    return info
 
 for file_idx, file in enumerate(csv_file_name):
     x = []
@@ -107,23 +81,17 @@ for file_idx, file in enumerate(csv_file_name):
     t = []
 
     with open(file, newline='') as csvfile:
-        read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')    
-        if (skip_header):
-            next(read_csv, None) # skipping the first line
-        t_var = 0     
+        csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')    
         actual_sample = 0
-        for i, row in enumerate(read_csv):   
+        for i, row in enumerate(csv_reader):   
             if (sampling[file_idx] > actual_sample):
-                if (CALCULATE_DT):
-                    t_var += float(row[0])
                 actual_sample += 1
             else:
                 x.append(float(row[1]))
-                y.append(float(row[y_pos]))
+                y.append(float(row[2]))
                 ry.append(float(row[5]))
-                if (CALCULATE_DT):
-                    t.append(float(row[0]) + t_var)
-                    t_var = 0
+                t.append(float(row[0]))                    
+                t_var = 0
                 actual_sample = 0
 
     x = np.asarray(x)
@@ -142,31 +110,30 @@ for file_idx, file in enumerate(csv_file_name):
     all_y_arrays = []
     all_ry_arrays = []
 
-    if(CALCULATE_DT):
-        dt_array = []
-        x_array = []
-        y_array = []
-        ry_array = []
+    dt_array = []
+    x_array = []
+    y_array = []
+    ry_array = []
 
-        for i in range(1, len(t)):
-            if t[i - 1] < t[i]:
-                dt_array.append(t[i] - t[i - 1])
-                x_array.append(x[i])
-                y_array.append(y[i])
-                ry_array.append(ry[i])
-            else:
-                all_dt_arrays.append(dt_array)
-                all_x_arrays.append(x_array)
-                all_y_arrays.append(y_array)
-                all_ry_arrays.append(ry_array)
-                dt_array = []
-                x_array = []
-                y_array = []
-                ry_array = []
-        all_dt_arrays.append(dt_array)
-        all_x_arrays.append(x_array)
-        all_y_arrays.append(y_array)
-        all_ry_arrays.append(ry_array)
+    for i in range(1, len(t)):
+        if t[i - 1] < t[i]:
+            dt_array.append(t[i] - t[i - 1])
+            x_array.append(x[i])
+            y_array.append(y[i])
+            ry_array.append(ry[i])
+        else:
+            all_dt_arrays.append(dt_array)
+            all_x_arrays.append(x_array)
+            all_y_arrays.append(y_array)
+            all_ry_arrays.append(ry_array)
+            dt_array = []
+            x_array = []
+            y_array = []
+            ry_array = []
+    all_dt_arrays.append(dt_array)
+    all_x_arrays.append(x_array)
+    all_y_arrays.append(y_array)
+    all_ry_arrays.append(ry_array)
 
     for i in range(0, len(all_dt_arrays)):    
         dt_array = all_dt_arrays[i]
@@ -183,14 +150,10 @@ for file_idx, file in enumerate(csv_file_name):
             dx.append(x_array[i] - x_array[i - 1])
             dy.append(y_array[i] - y_array[i - 1])
 
-            if (CALCULATE_DT):
-                orientation.append(ry_array[i - 1])
-            else:
-                orientation.append(math.degrees(math.atan2(dy[i - 1], dx[i - 1]))) #t1 - t0
+            orientation.append(ry_array[i - 1])
 
         for i in range(1, len(dt_array)):
-            if (CALCULATE_DT):
-                dt = dt_array[i - 1]
+            dt = dt_array[i - 1]
 
             dtheta = orientation[i] - orientation[i - 1]
 
@@ -212,10 +175,12 @@ for file_idx, file in enumerate(csv_file_name):
 
 
 fig_mpl = plt.figure()
-colors = ["red", "blue"]
-alphas = [0.5, 0.25]
+colors = ["red", "blue", "yellow"]
+alphas = [0.5, 0.25, 1]
 
-for i in range(0, len(speed_arrays)):
+file_nbr = len(csv_file_name)
+
+for i in range(0, file_nbr):
     speed = speed_arrays[i]
     theta = theta_arrays[i]
     scatter(fig_mpl, theta, speed, alphas[i], colors[i])
@@ -232,5 +197,9 @@ for i in range(0, len(speed_arrays)):
     plt.title("Linear speed (m/s) vs time (s)")
     plt.plot([i for i in range(0, len(speed))], speed)
     plt.plot([i for i in range(0, len(speed))], [speed.mean() for i in range(0, len(speed))])
+
+for i, r in enumerate(radius):
+    info = read_csv(r, sufixes=["info"])
+    scatter(fig_mpl, info["Angle speed"], info["Desired linear speed"], alphas[file_nbr + i], colors[file_nbr + i])
 
 plt.show()

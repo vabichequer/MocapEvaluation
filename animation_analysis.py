@@ -4,32 +4,37 @@ from pathlib import Path
 import collections
 import numpy as np
 
-def read_csv(angle, prefix="", sufix=""):
+def read_csv(angle, prefix="", sufixes=""):
     frame_collection = []
     frame = []
+    info = {}
     channel = {}
     channel_number = 0
-    with open(FOLDER_FILES + '/' + prefix + str(angle) + sufix + ".csv", newline='') as csvfile:
-        read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
-        for row in read_csv:
-            if (len(row) == 2):
-                channel_number = int(row[1])                
-                if (channel_number > 0):
-                    frame.append(channel)
-                channel = {}
-            elif (len(row) == 3):
-                channel[str(row[1])] = str(row[2])
-            elif (len(row) == 4):
-                #frame_nbr = int(row[1])
-                #idx = int(row[3])
-                frame.append(channel)
-                frame_collection.append(frame)
-                frame = []
-            else:
-                pass                
-    
-    csvfile.close()
-    return frame_collection
+    for sufix in sufixes:
+        with open(FOLDER_FILES + '/' + prefix + str(angle) + "_" + sufix + ".csv", newline='') as csvfile:
+            read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
+            if (sufix == "stats"):
+                for row in read_csv:
+                    if (len(row) == 2):
+                        channel_number = int(row[1])                
+                        if (channel_number > 0):
+                            frame.append(channel)
+                        channel = {}
+                    elif (len(row) == 3):
+                        channel[str(row[1])] = str(row[2])
+                    elif (len(row) == 4):
+                        #frame_nbr = int(row[1])
+                        #idx = int(row[3])
+                        frame.append(channel)
+                        frame_collection.append(frame)
+                        frame = []
+                    else:
+                        pass
+            elif (sufix == "info"):            
+                for row in read_csv:
+                    info[row[0]] = float(row[1])
+        csvfile.close()
+    return frame_collection, info
 
 def PieChart(labels, sizes):
     plt.figure()
@@ -55,7 +60,7 @@ occurences = {}
 blend_statuses = []
 
 for a in angles:
-    frames = read_csv(a, sufix="_stats")
+    frames, info = read_csv(a, sufixes=["stats", "info"])
     clips = []
 
     for frame in frames:
@@ -71,7 +76,7 @@ for a in angles:
     print(occurences_clips)   
     print(occurences_statuses)    
 
-    labels = 'Used', 'Not used'
+    labels = ['Used', 'Not used']
     sizes = [len(occurences_clips), 37]
     PieChart(labels, sizes)
     PieChart(occurences_statuses.keys(), occurences_statuses.values())
@@ -85,4 +90,8 @@ for a in angles:
     barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
     autolabel(barlist)
     barlist[-1].set_color('r')
+
+    
+    labels = ["Animating", "Blending"]
+    PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
     plt.show()
