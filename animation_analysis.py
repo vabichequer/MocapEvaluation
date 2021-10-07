@@ -4,14 +4,14 @@ from pathlib import Path
 import collections
 import numpy as np
 
-def read_csv(angle, prefix="", sufixes=""):
+def read_csv(radius, prefix="", sufixes=""):
     frame_collection = []
     frame = []
     info = {}
     channel = {}
     channel_number = 0
     for sufix in sufixes:
-        with open(FOLDER_FILES + '/' + prefix + str(angle) + "_" + sufix + ".csv", newline='') as csvfile:
+        with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
             read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
             if (sufix == "stats"):
                 for row in read_csv:
@@ -53,14 +53,14 @@ def autolabel(rects):
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-angles = [5, 10, 15]
+radiuses = [5, 10, 15]
 
 occurences = {}
 
 blend_statuses = []
 
-for a in angles:
-    frames, info = read_csv(a, sufixes=["stats", "info"])
+for r in radiuses:
+    frames, info = read_csv(r, sufixes=["stats", "info"])
     clips = []
 
     for frame in frames:
