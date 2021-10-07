@@ -53,7 +53,7 @@ def autolabel(rects):
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
-angles = [5]#, 10, 15]
+angles = [5, 10, 15]
 
 occurences = {}
 
@@ -92,6 +92,6 @@ for a in angles:
     barlist[-1].set_color('r')
 
     
-    labels = ["Animating", "Blending"]
+    labels = ["Pure animation", "Blending animations"]
     PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
     plt.show()
