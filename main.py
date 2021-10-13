@@ -167,21 +167,7 @@ for i in range(0, file_nbr):
                     avg_theta = np.mean(theta_arrays[i][j - idx:j])
                     average_speed.append(np.mean(speed_arrays[i][j - idx:j]))
                     average_theta.append(np.mean(theta_arrays[i][j - idx:j]))
-                    #time_acc = []     
-                    if (math.isnan(avg_speed)):
-                        print("speed:", speed_arrays[i][j - idx:j])
-                        print("theta:", theta_arrays[i][j - idx:j])
-                        print("time acc: ", time_acc)
-                        print("time window: ", time_windows[i])
-                        print("sum: ", sum(time_acc))
-                        print("avg_speed: ", avg_speed)
-                        print("avg_theta: ", avg_theta)
-                        print("comparison: ", sum(time_acc) > time_windows[i])
-                        print("i:", i, " j: ", j, " idx: ", idx, " dt: ", dt)
-                        print("dt array: ", single_dt_array)
-                        print("dt arrays: ", dt_arrays[0][20])
-                        print("array nbr: ", array_nbr)
-                        exit(1)
+                    time_acc.pop(0)
                 else:
                     if (j == len(single_dt_array) - 1):
                         average_speed.append(np.mean(speed_arrays[i][j - idx:j]))
