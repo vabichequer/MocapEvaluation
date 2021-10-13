@@ -95,7 +95,7 @@ for i in range(0, len(x_planned)):
     axs[i].set_title(str(radiuses[i]) + "m radius curve")
     axs[i].plot(x_final[i], y_final[i], label="final")    
     axs[i].plot(x_planned[i], y_planned[i], label="planned")    
-    #axs[i].fill_between(x_final[i], y_interp[i], y_final[i], facecolor="none", hatch = '//', edgecolor="black")
+    axs[i].grid()
     axs[i].set_xlabel("X")
     axs[i].set_ylabel("Y")
     axs[i].legend()

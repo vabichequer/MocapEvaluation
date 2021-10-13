@@ -24,7 +24,7 @@ FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/outpu
 
 animation_dataset_file = sys.argv[1]
 radius = sys.argv[2].split(',')
-sampling = [int(x) for x in sys.argv[3].split(',')]
+time_windows = [float(x) for x in sys.argv[3].split(',')]
 
 csv_file_name = []
 csv_file_name.append(animation_dataset_file)
@@ -38,6 +38,7 @@ print('*' * 25)
 
 speed_arrays = []
 theta_arrays = []
+dt_arrays = []
 
 def read_csv(radius, prefix="", sufixes=""):
     info = {}
@@ -58,17 +59,11 @@ for file_idx, file in enumerate(csv_file_name):
 
     with open(FOLDER_FILES + '/' + file, newline='') as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')    
-        actual_sample = 0
         for i, row in enumerate(csv_reader):   
-            if (sampling[file_idx] > actual_sample):
-                actual_sample += 1
-            else:
-                x.append(float(row[1]))
-                y.append(float(row[2]))
-                ry.append(float(row[5]))
-                t.append(float(row[0]))                    
-                t_var = 0
-                actual_sample = 0
+            x.append(float(row[1]))
+            y.append(float(row[2]))
+            ry.append(float(row[5]))
+            t.append(float(row[0]))     
 
     x = np.asarray(x)
     y = np.asarray(y)
@@ -148,18 +143,66 @@ for file_idx, file in enumerate(csv_file_name):
 
     speed_arrays.append(speed)
     theta_arrays.append(theta)
+    dt_arrays.append(all_dt_arrays)
 
 file_nbr = len(csv_file_name)
+# Averaging results
+all_average_speeds = []
+all_average_thetas = []
+
+print(file_nbr, len(dt_arrays))
+
+for i in range(0, file_nbr):
+    if (time_windows[i] > 0):
+        average_speed = []
+        average_theta = []
+
+        for array_nbr, single_dt_array in enumerate(dt_arrays[i]):
+            time_acc = []
+            for j, dt in enumerate(single_dt_array):
+                time_acc.append(dt)
+                idx = len(time_acc) - 1
+                if (sum(time_acc) > time_windows[i]):
+                    avg_speed = np.mean(speed_arrays[i][j - idx:j])
+                    avg_theta = np.mean(theta_arrays[i][j - idx:j])
+                    average_speed.append(np.mean(speed_arrays[i][j - idx:j]))
+                    average_theta.append(np.mean(theta_arrays[i][j - idx:j]))
+                    #time_acc = []     
+                    if (math.isnan(avg_speed)):
+                        print("speed:", speed_arrays[i][j - idx:j])
+                        print("theta:", theta_arrays[i][j - idx:j])
+                        print("time acc: ", time_acc)
+                        print("time window: ", time_windows[i])
+                        print("sum: ", sum(time_acc))
+                        print("avg_speed: ", avg_speed)
+                        print("avg_theta: ", avg_theta)
+                        print("comparison: ", sum(time_acc) > time_windows[i])
+                        print("i:", i, " j: ", j, " idx: ", idx, " dt: ", dt)
+                        print("dt array: ", single_dt_array)
+                        print("dt arrays: ", dt_arrays[0][20])
+                        print("array nbr: ", array_nbr)
+                        exit(1)
+                else:
+                    if (j == len(single_dt_array) - 1):
+                        average_speed.append(np.mean(speed_arrays[i][j - idx:j]))
+                        average_theta.append(np.mean(theta_arrays[i][j - idx:j]))
+
+
+        all_average_speeds.append(average_speed)
+        all_average_thetas.append(average_theta)
+    else:        
+        all_average_speeds.append(speed_arrays[i])
+        all_average_thetas.append(theta_arrays[i])
 
 for i, r in enumerate(radius):
     fig_scm = plt.figure()
 
-    speed = speed_arrays[0]
-    theta = theta_arrays[0]
+    speed = all_average_speeds[0]
+    theta = all_average_thetas[0]
     scatter(fig_scm, theta, speed, 0.5, "red", r)
 
-    speed = speed_arrays[i + 1]
-    theta = theta_arrays[i + 1]
+    speed = np.asarray(all_average_speeds[i + 1])
+    theta = np.asarray(all_average_thetas[i + 1])
     scatter(fig_scm, theta, speed, 0.25, "blue", r)
 
     fig_ts = plt.figure()
