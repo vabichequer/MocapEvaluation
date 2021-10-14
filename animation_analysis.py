@@ -1,3 +1,4 @@
+from os import write
 import matplotlib.pyplot as plt
 import csv
 from pathlib import Path
@@ -68,9 +69,9 @@ for r in radiuses:
             blend_statuses.append(channel['BlendStatus'])
 
             if (channel['BlendStatus'] == "Dominant"):
-                clips.append(channel['Primary clip'])
+                clips.append(channel['Primary clip'])                
                 break
-        
+
     occurences_clips = collections.Counter(clips)
     occurences_statuses = collections.Counter(blend_statuses)
     print(occurences_clips)   
@@ -82,8 +83,18 @@ for r in radiuses:
     PieChart(occurences_statuses.keys(), occurences_statuses.values())
 
     clips = np.asarray(clips)
-    number_of_transitions = len(np.where(np.roll(clips,1)!=clips)[0])
+    transition_locations = np.where(np.roll(clips,1)!=clips)[0]
+    number_of_transitions = len(transition_locations)    
+
+    file = open(FOLDER_FILES + '/' + str(r) + "_frames.csv", 'w', newline='')
+
+    writer = csv.writer(file)
+
+    for idx in transition_locations:
+        writer.writerow([idx])
     
+    file.close()
+
     occurences_clips['Transitions'] = number_of_transitions
 
     bar_fig = plt.figure()

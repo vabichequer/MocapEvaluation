@@ -42,14 +42,18 @@ dt_arrays = []
 
 def read_csv(radius, prefix="", sufixes=""):
     info = {}
+    frames = []
     for sufix in sufixes:
         with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
             read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
             if (sufix == "info"):            
                 for row in read_csv:
                     info[row[0]] = float(row[1])
+            if (sufix == "frames"):
+                for row in read_csv:
+                    frames.append(int(row[0]))
         csvfile.close()
-    return info
+    return info, frames
 
 for file_idx, file in enumerate(csv_file_name):
     x = []
@@ -181,6 +185,8 @@ for i in range(0, file_nbr):
         all_average_thetas.append(theta_arrays[i])
 
 for i, r in enumerate(radius):
+    info, frames = read_csv(r, sufixes=["info", "frames"])
+
     fig_scm = plt.figure()
 
     speed = all_average_speeds[0]
@@ -191,21 +197,27 @@ for i, r in enumerate(radius):
     theta = np.asarray(all_average_thetas[i + 1])
     scatter(fig_scm, theta, speed, 0.25, "blue", r)
 
+    # This is in order not to average the speed when transitioning
+    speed = speed_arrays[i + 1]
+    theta = theta_arrays[i + 1]
+
     fig_ts = plt.figure()
     plt.ylabel("Turning speed (degrees/s)")
     plt.title("Turning speed (degrees/s) vs time (s)")
     plt.plot([j for j in range(0, len(theta))], theta)
     plt.plot([l for l in range(0, len(theta))], [theta.mean() for m in range(0, len(speed))])
-
+    plt.scatter(frames, theta[frames], color='r')
+    plt.legend(["Turning speed", "Average", "Transitions"])
 
     fig_ls = plt.figure()
     plt.ylabel("Linear speed (m/s)")
     plt.title("Linear speed (m/s) vs time (s)")
     plt.plot([k for k in range(0, len(speed))], speed)
     plt.plot([l for l in range(0, len(speed))], [speed.mean() for m in range(0, len(speed))])
+    plt.scatter(frames, speed[frames], color='r')
+    plt.legend(["Linear speed", "Average", "Transitions"])
 
-    info = read_csv(r, sufixes=["info"])
-    scatter(fig_scm, info["Angle speed"], info["Desired linear speed"], 1, "yellow", r)
+    scatter(fig_scm, info["Angle speed"], info["Desired linear speed"], 1, "lime", r)
 
     fig_scm.set_size_inches((16, 9), forward=False)
     fig_scm.savefig(str(r) + "_scm.eps", )
