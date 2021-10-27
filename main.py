@@ -1,3 +1,4 @@
+from os import read
 import numpy as np
 import matplotlib.pyplot as plt
 import math 
@@ -17,18 +18,18 @@ def scatter(fig, x, y, alpha, color, radius):
     ax.set_xlabel("Turning speed (degrees/s)")
     ax.set_title("Speed coverage map, radius: " + str(radius))
 
-def magnitude(vector): 
-    return math.sqrt(sum(pow(element, 2) for element in vector))
+def magnitude(vx, vy): 
+    return math.sqrt((vx * vx) + (vy * vy))
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
 animation_dataset_file = sys.argv[1]
-radius = sys.argv[2].split(',')
+radiuses = sys.argv[2].split(',')
 time_windows = [float(x) for x in sys.argv[3].split(',')]
 
 csv_file_name = []
 csv_file_name.append(animation_dataset_file)
-for r in radius:
+for r in radiuses:
     csv_file_name.append(r + "_final.csv")
 
 print('*' * 25)
@@ -36,38 +37,48 @@ print("Program setup:")
 print("CSV files names: ", csv_file_name)
 print('*' * 25)
 
+radiuses.insert(0, 0) # for the dataset
+
 speed_arrays = []
 theta_arrays = []
 dt_arrays = []
 
-def read_csv(radius, prefix="", sufixes=""):
+def read_csv(radius = "", prefix="", sufix=""):
     info = {}
-    frames = []
-    for sufix in sufixes:
-        with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
-            read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
-            if (sufix == "info"):            
-                for row in read_csv:
-                    info[row[0]] = float(row[1])
-            if (sufix == "frames"):
-                for row in read_csv:
-                    frames.append(int(row[0]))
-        csvfile.close()
-    return info, frames
-
-for file_idx, file in enumerate(csv_file_name):
+    frames = []    
     x = []
     y = []
     ry = []
     t = []
 
-    with open(FOLDER_FILES + '/' + file, newline='') as csvfile:
-        csv_reader = csv.reader(csvfile, delimiter=',', quotechar='|')    
-        for i, row in enumerate(csv_reader):   
-            x.append(float(row[1]))
-            y.append(float(row[2]))
-            ry.append(float(row[5]))
-            t.append(float(row[0]))     
+    with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
+        read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
+        if (sufix == "info"):            
+            for row in read_csv:
+                info[row[0]] = float(row[1])
+        if (sufix == "frames"):
+            for row in read_csv:
+                frames.append(int(row[0]))
+        if (sufix == "final" or sufix == "dataset"):
+            for row in read_csv:   
+                x.append(float(row[1]))
+                y.append(float(row[2]))
+                ry.append(float(row[5]))
+                t.append(float(row[0]))    
+    csvfile.close()
+        
+    if (sufix == "info"):   
+        return info         
+    if (sufix == "frames"):
+        return frames
+    if (sufix == "final" or sufix == "dataset"):
+        return x, y, ry, t
+
+for r in radiuses:  
+    if (r == 0):
+        x, y, ry, t = read_csv(prefix = "animation", sufix = "dataset")
+    else:
+        x, y, ry, t = read_csv(r, sufix = "final")
 
     x = np.asarray(x)
     y = np.asarray(y)
@@ -137,10 +148,8 @@ for file_idx, file in enumerate(csv_file_name):
             elif (dtheta <= -180):
                 dtheta += 360
 
-            speed.append(magnitude([dx[i - 1], dy[i - 1]]) / dt)
+            speed.append(magnitude(dx[i - 1] / dt, dy[i - 1] / dt))
             theta.append(dtheta / dt)
-            #if (abs(theta[i - 1]) > 180):
-                #print(i, dtheta, dt, theta[i - 1], orientation[i], orientation[i - 1])
 
     speed = np.asarray(speed)
     theta = np.asarray(theta)
@@ -150,11 +159,12 @@ for file_idx, file in enumerate(csv_file_name):
     dt_arrays.append(all_dt_arrays)
 
 file_nbr = len(csv_file_name)
+
 # Averaging results
 all_average_speeds = []
 all_average_thetas = []
 
-print(file_nbr, len(dt_arrays))
+print(file_nbr, len(radiuses))
 
 for i in range(0, file_nbr):
     if (time_windows[i] > 0):
@@ -184,8 +194,11 @@ for i in range(0, file_nbr):
         all_average_speeds.append(speed_arrays[i])
         all_average_thetas.append(theta_arrays[i])
 
-for i, r in enumerate(radius):
-    info, frames = read_csv(r, sufixes=["info", "frames"])
+radiuses.remove(0)
+
+for i, r in enumerate(radiuses):
+    info = read_csv(r, sufix = "info")
+    frames = read_csv(r, sufix = "frames")
 
     fig_scm = plt.figure()
 
@@ -198,6 +211,8 @@ for i, r in enumerate(radius):
     scatter(fig_scm, theta, speed, 0.25, "blue", r)
 
     # This is in order not to average the speed when transitioning
+    # this needs to be a raw data, otherwise I can't pinpoint where
+    # the transition actually occured, because the data is averaged
     speed = speed_arrays[i + 1]
     theta = theta_arrays[i + 1]
 

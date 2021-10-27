@@ -60,10 +60,6 @@ for r in radiuses:
     x_p, y_p = read_csv(False, r, sufix="_planned")
     x_f, y_f, t = read_csv(True, r, sufix="_final")
 
-    interp = np.interp(x_f, x_p, y_p)
-
-    y_interp.append(interp)
-
     x_planned.append(x_p)
     y_planned.append(y_p)
     x_final.append(x_f)
@@ -72,7 +68,7 @@ for r in radiuses:
 
     # Find every control point in the data extracted from Unity
     # This is useful to compare the error generated at every control point
-    t = np.asarray(t).astype(int)
+    """t = np.asarray(t).astype(int)
     idx_of_changes = np.where(np.roll(t,1)!=t)[0]
 
     idx_of_changes = np.append(idx_of_changes, len(t) - 1)
@@ -80,7 +76,10 @@ for r in radiuses:
     idx_of_changes = idx_of_changes[:len(x_p)]
 
     dx = x_p - x_f[idx_of_changes]
-    dy = y_p - y_f[idx_of_changes]
+    dy = y_p - y_f[idx_of_changes]"""
+
+    dx = x_p - x_f
+    dy = y_p - y_f
 
     for i in range(0, len(dx)):
         distances.append(magnitude([dx[i], dy[i]]))
@@ -109,8 +108,8 @@ for i in range(0, len(radiuses)):
     axs[i].plot(range(0, len(all_distances[i])), all_distances[i], marker="o")
     axs[i].grid()
     # Residual sum of squares
-    anchored_text1 = AnchoredText("Summed Distance Error: " + str(round(np.sum(all_distances[i]), 2)) + "m", loc='lower right')
-    axs[i].add_artist(anchored_text1)
+    #anchored_text1 = AnchoredText("Summed Distance Error: " + str(round(np.sum(all_distances[i]), 2)) + "m", loc='lower right')
+    #axs[i].add_artist(anchored_text1)
     axs[i].set_ylabel("Distance")
     axs[i].set_xlabel("Trajectory point")
 
