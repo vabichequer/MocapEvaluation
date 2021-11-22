@@ -1,11 +1,7 @@
-from operator import contains
-from matplotlib.text import Annotation
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.offsetbox import AnchoredText
 import csv
 from pathlib import Path
-from scipy.spatial import distance
 import math
 
 def magnitude(vector): 
@@ -68,15 +64,6 @@ for r in radiuses:
 
     # Find every control point in the data extracted from Unity
     # This is useful to compare the error generated at every control point
-    """t = np.asarray(t).astype(int)
-    idx_of_changes = np.where(np.roll(t,1)!=t)[0]
-
-    idx_of_changes = np.append(idx_of_changes, len(t) - 1)
-
-    idx_of_changes = idx_of_changes[:len(x_p)]
-
-    dx = x_p - x_f[idx_of_changes]
-    dy = y_p - y_f[idx_of_changes]"""
 
     dx = x_p - x_f
     dy = y_p - y_f

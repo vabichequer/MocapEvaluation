@@ -1,22 +1,36 @@
-from os import read
 import numpy as np
 import matplotlib.pyplot as plt
 import math 
 import csv
 import sys
 from pathlib import Path
+import seaborn as sns
+from scipy.stats import gaussian_kde
 
 ### ARGUMENTS ###
 # <string> CSV file name
 # <int> sampling rate
 
-def scatter(fig, x, y, alpha, color, radius):    
-    ax = fig.add_subplot(1, 1, 1)
-    ax.scatter(x, y, alpha=alpha, c=color)
+def scatter(fig, ax, x, y, alpha, radius, color = "", cmap = ""):    
+    if (color == ""):
+        xy = np.vstack([x,y])
+        grid_x, grid_y = np.mgrid[min(x):max(x):100j, min(y):max(y):100j]
+        positions = np.vstack([grid_x.ravel(), grid_y.ravel()])
+        z = gaussian_kde(xy)(xy)
+        f = np.reshape(z[positions].T, grid_x.shape)
+        idx = z.argsort()
+        x, y, z = np.asarray(x)[idx], np.asarray(y)[idx], np.asarray(z)[idx]
+        cax = ax.scatter(x, y, alpha=alpha, c=z, s=30, cmap=cmap)
+        cset = plt.contour(x,y,f)
+        plt.clabel(cset, inline=1, fontsize=10)
+        fig.colorbar(cax)
+    else:
+        ax.scatter(x, y, alpha=alpha, c=color, s=30)
 
     ax.set_ylabel("Linear speed (m/s)")
     ax.set_xlabel("Turning speed (degrees/s)")
     ax.set_title("Speed coverage map, radius: " + str(radius))
+    
 
 def magnitude(vx, vy): 
     return math.sqrt((vx * vx) + (vy * vy))
@@ -200,18 +214,26 @@ for i, r in enumerate(radiuses):
     info = read_csv(r, sufix = "info")
     frames = read_csv(r, sufix = "frames")
 
-    fig_scm = plt.figure()
+    fig_scm, ax = plt.subplots(1, figsize=(12,8))
 
-    speed = all_average_speeds[0]
-    theta = all_average_thetas[0]
-    scatter(fig_scm, theta, speed, 0.5, "red", r)
+    dataset_speed = all_average_speeds[0]
+    dataset_theta = all_average_thetas[0]
+    trial_speed = all_average_speeds[i + 1]
+    trial_theta = all_average_thetas[i + 1]
 
-    speed = np.asarray(all_average_speeds[i + 1])
-    theta = np.asarray(all_average_thetas[i + 1])
-    scatter(fig_scm, theta, speed, 0.25, "blue", r)
+
+#    grid = sns.kdeplot(dataset_theta, dataset_speed, x="Angular speed (degrees/s)", y="Linear speed (m/s)", cmap='mako')
+#    grid = sns.kdeplot(trial_theta, trial_speed, x="Angular speed (degrees/s)", y="Linear speed (m/s)", cmap='autumn')
+    xy = np.vstack([dataset_theta, dataset_speed])
+    z = gaussian_kde(xy)(xy)
+    grid = sns.scatterplot(dataset_theta, dataset_speed, c=z, cmap='mako')
+    xy = np.vstack([trial_theta, trial_speed])
+    z = gaussian_kde(xy)(xy)
+    grid = sns.scatterplot(trial_theta, trial_speed, c=z, cmap='autumn')
+    grid.scatter(info["Angle speed"], info["Desired linear speed"], color='lime')
 
     # This is in order not to average the speed when transitioning
-    # this needs to be a raw data, otherwise I can't pinpoint where
+    # this needs to be raw data, otherwise I can't pinpoint where
     # the transition actually occured, because the data is averaged
     speed = speed_arrays[i + 1]
     theta = theta_arrays[i + 1]
@@ -221,7 +243,7 @@ for i, r in enumerate(radiuses):
     plt.title("Turning speed (degrees/s) vs time (s)")
     plt.plot([j for j in range(0, len(theta))], theta)
     plt.plot([l for l in range(0, len(theta))], [theta.mean() for m in range(0, len(speed))])
-    plt.scatter(frames, theta[frames], color='r')
+    #plt.scatter(frames, theta[frames], color='r')
     plt.legend(["Turning speed", "Average", "Transitions"])
 
     fig_ls = plt.figure()
@@ -229,14 +251,16 @@ for i, r in enumerate(radiuses):
     plt.title("Linear speed (m/s) vs time (s)")
     plt.plot([k for k in range(0, len(speed))], speed)
     plt.plot([l for l in range(0, len(speed))], [speed.mean() for m in range(0, len(speed))])
-    plt.scatter(frames, speed[frames], color='r')
+    #plt.scatter(frames, speed[frames], color='r')
     plt.legend(["Linear speed", "Average", "Transitions"])
 
-    scatter(fig_scm, info["Angle speed"], info["Desired linear speed"], 1, "lime", r)
+    #scatter(fig_scm, ax, info["Angle speed"], info["Desired linear speed"], 1, r, "lime")
+    #grid.plot_joint(plt.scatter, color="g")
+    # add your point
 
     fig_scm.set_size_inches((16, 9), forward=False)
     fig_scm.savefig(str(r) + "_scm.eps", )
     fig_ts.savefig(str(r) + "_ts.eps")
     fig_ls.savefig(str(r) + "_ls.eps")
-
+    
     plt.show()
