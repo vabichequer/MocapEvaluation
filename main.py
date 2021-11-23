@@ -6,11 +6,19 @@ import sys
 from pathlib import Path
 import seaborn as sns
 from scipy.stats import gaussian_kde
+import collections
 
 ### ARGUMENTS ###
 # <string> CSV file name
 # <int> sampling rate
 
+def PieChart(labels, sizes):
+    plt.figure()
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90)
+
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 def scatter(fig, ax, x, y, alpha, radius, color = "", cmap = ""):    
     if (color == ""):
         xy = np.vstack([x,y])
@@ -76,7 +84,7 @@ def read_csv(radius = "", prefix="", sufix=""):
         if (sufix == "final" or sufix == "dataset"):
             for row in read_csv:   
                 x.append(float(row[1]))
-                y.append(float(row[2]))
+                y.append(float(row[3]))
                 ry.append(float(row[5]))
                 t.append(float(row[0]))    
     csvfile.close()
@@ -151,6 +159,12 @@ for r in radiuses:
             dy.append(y_array[i] - y_array[i - 1])
 
             orientation.append(ry_array[i - 1])
+        
+        if (r != 0):
+            plt.plot([l for l in range(0, len(dx))], dx)
+            plt.show()
+            plt.plot([l for l in range(0, len(dy))], dy)
+            plt.show()
 
         for i in range(1, len(dt_array)):
             dt = dt_array[i - 1]
@@ -235,12 +249,15 @@ for i, r in enumerate(radiuses):
     # This is in order not to average the speed when transitioning
     # this needs to be raw data, otherwise I can't pinpoint where
     # the transition actually occured, because the data is averaged
-    speed = speed_arrays[i + 1]
-    theta = theta_arrays[i + 1]
+    #speed = speed_arrays[i + 1]
+    #theta = theta_arrays[i + 1]
+
+    speed = np.asarray(trial_speed)
+    theta = np.asarray(trial_theta)
 
     fig_ts = plt.figure()
     plt.ylabel("Turning speed (degrees/s)")
-    plt.title("Turning speed (degrees/s) vs time (s)")
+    plt.title("Average turning speed (degrees/s) vs time (s) for " + str(time_windows[i]) + "s")
     plt.plot([j for j in range(0, len(theta))], theta)
     plt.plot([l for l in range(0, len(theta))], [theta.mean() for m in range(0, len(speed))])
     #plt.scatter(frames, theta[frames], color='r')
@@ -248,7 +265,7 @@ for i, r in enumerate(radiuses):
 
     fig_ls = plt.figure()
     plt.ylabel("Linear speed (m/s)")
-    plt.title("Linear speed (m/s) vs time (s)")
+    plt.title("Average linear speed (m/s) vs time (s) for " + str(time_windows[i]) + "s")
     plt.plot([k for k in range(0, len(speed))], speed)
     plt.plot([l for l in range(0, len(speed))], [speed.mean() for m in range(0, len(speed))])
     #plt.scatter(frames, speed[frames], color='r')
@@ -262,5 +279,11 @@ for i, r in enumerate(radiuses):
     fig_scm.savefig(str(r) + "_scm.eps", )
     fig_ts.savefig(str(r) + "_ts.eps")
     fig_ls.savefig(str(r) + "_ls.eps")
+
+    trial_speed = np.asarray(trial_speed)
+
+    occurences_clips = collections.Counter(np.around(trial_speed, 1))
     
+    PieChart(occurences_clips.keys(), occurences_clips.values())
+
     plt.show()

@@ -56,11 +56,9 @@ FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/outpu
 
 radiuses = [5, 10, 15]
 
-occurences = {}
-
-blend_statuses = []
-
 for r in radiuses:
+    blend_statuses = []
+
     frames, info = read_csv(r, sufixes=["stats", "info"])
     clips = []
 
@@ -70,12 +68,11 @@ for r in radiuses:
 
             if (channel['BlendStatus'] == "Dominant"):
                 clips.append(channel['Primary clip'])                
-                break
-
+                
     occurences_clips = collections.Counter(clips)
     occurences_statuses = collections.Counter(blend_statuses)
-    print(occurences_clips)   
-    print(occurences_statuses)    
+    print(occurences_clips)
+    print(occurences_statuses)
 
     labels = ['Used', 'Not used']
     sizes = [len(occurences_clips), 37]
@@ -104,5 +101,13 @@ for r in radiuses:
 
     
     labels = ["Pure animation", "Blending animations"]
+
+    # According to the MxMAnimator and the documentation, the Blend Time is set to 0.3, so it takes 0.3s to fully blenc in
+    # an animation. Therefore, every time it changes, you can consider that 0.3s were taken to actually do it. Hence, the
+    # multiplication by 0.3s.
+
     PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
+
+    nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
+
     plt.show()
