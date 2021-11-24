@@ -159,12 +159,6 @@ for r in radiuses:
             dy.append(y_array[i] - y_array[i - 1])
 
             orientation.append(ry_array[i - 1])
-        
-        if (r != 0):
-            plt.plot([l for l in range(0, len(dx))], dx)
-            plt.show()
-            plt.plot([l for l in range(0, len(dy))], dy)
-            plt.show()
 
         for i in range(1, len(dt_array)):
             dt = dt_array[i - 1]
@@ -281,9 +275,14 @@ for i, r in enumerate(radiuses):
     fig_ls.savefig(str(r) + "_ls.eps")
 
     trial_speed = np.asarray(trial_speed)
-
-    occurences_clips = collections.Counter(np.around(trial_speed, 1))
     
-    PieChart(occurences_clips.keys(), occurences_clips.values())
+    file = open(FOLDER_FILES + '/' + str(r) + "_speed_dump.csv", 'w', newline='')
+
+    writer = csv.writer(file)
+
+    for speed in trial_speed:
+        writer.writerow([speed])
+    
+    file.close()
 
     plt.show()

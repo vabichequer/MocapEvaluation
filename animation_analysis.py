@@ -44,6 +44,7 @@ def PieChart(labels, sizes):
             shadow=True, startangle=90)
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
+
 def autolabel(rects):
     # attach some text labels
     for rect in rects:
@@ -51,6 +52,16 @@ def autolabel(rects):
         plt.text(rect.get_x() + rect.get_width()/2., 1.05*height,
                 '%d' % int(height),
                 ha='center', va='bottom')
+
+def write_csv(name, info):
+    f = open(FOLDER_FILES + '/' + str(r) + "_" + name + ".csv", 'w', newline='')
+
+    w = csv.writer(f)
+
+    for i in info:
+        w.writerow([i])
+    
+    f.close()
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
 
@@ -83,14 +94,7 @@ for r in radiuses:
     transition_locations = np.where(np.roll(clips,1)!=clips)[0]
     number_of_transitions = len(transition_locations)    
 
-    file = open(FOLDER_FILES + '/' + str(r) + "_frames.csv", 'w', newline='')
-
-    writer = csv.writer(file)
-
-    for idx in transition_locations:
-        writer.writerow([idx])
-    
-    file.close()
+    write_csv("frames", transition_locations)
 
     occurences_clips['Transitions'] = number_of_transitions
 
@@ -109,5 +113,8 @@ for r in radiuses:
     PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
 
     nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
+
+    write_csv("nbr_blended_frames", [nbr_blended_frames])
+    write_csv("nbr_transitions", [occurences_clips['Transitions']])
 
     plt.show()
