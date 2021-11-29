@@ -35,7 +35,7 @@ def read_csv(read_time, radius, prefix="", sufix=""):
     else:
         return np.asarray(x), np.asarray(y)
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
 
 radiuses = [5, 10, 15]
 

@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 import collections
 import numpy as np
+import sys
 
 def read_csv(radius, prefix="", sufixes=""):
     frame_collection = []
@@ -63,7 +64,12 @@ def write_csv(name, info):
     
     f.close()
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
+
+if (len(sys.argv) > 1):
+    PLOT_ENABLED = bool(sys.argv[1])
+else:
+    PLOT_ENABLED = False
 
 radiuses = [5, 10, 15]
 
@@ -85,10 +91,11 @@ for r in radiuses:
     print(occurences_clips)
     print(occurences_statuses)
 
-    labels = ['Used', 'Not used']
-    sizes = [len(occurences_clips), 37]
-    PieChart(labels, sizes)
-    PieChart(occurences_statuses.keys(), occurences_statuses.values())
+    if (PLOT_ENABLED):
+        labels = ['Used', 'Not used']
+        sizes = [len(occurences_clips), 37]
+        PieChart(labels, sizes)
+        PieChart(occurences_statuses.keys(), occurences_statuses.values())
 
     clips = np.asarray(clips)
     transition_locations = np.where(np.roll(clips,1)!=clips)[0]
@@ -98,23 +105,27 @@ for r in radiuses:
 
     occurences_clips['Transitions'] = number_of_transitions
 
-    bar_fig = plt.figure()
-    barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
-    autolabel(barlist)
-    barlist[-1].set_color('r')
+    if (PLOT_ENABLED):
+        bar_fig = plt.figure()
+        barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
+        autolabel(barlist)
+        barlist[-1].set_color('r')
 
     
-    labels = ["Pure animation", "Blending animations"]
 
     # According to the MxMAnimator and the documentation, the Blend Time is set to 0.3, so it takes 0.3s to fully blenc in
     # an animation. Therefore, every time it changes, you can consider that 0.3s were taken to actually do it. Hence, the
     # multiplication by 0.3s.
 
-    PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
+    if (PLOT_ENABLED):
+        labels = ["Pure animation", "Blending animations"]
+        PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
 
     nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
 
     write_csv("nbr_blended_frames", [nbr_blended_frames])
     write_csv("nbr_transitions", [occurences_clips['Transitions']])
 
-    plt.show()
+    
+    if (PLOT_ENABLED):
+        plt.show()

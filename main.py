@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import seaborn as sns
 from scipy.stats import gaussian_kde
-import collections
+import pandas as pd
 
 ### ARGUMENTS ###
 # <string> CSV file name
@@ -43,7 +43,7 @@ def scatter(fig, ax, x, y, alpha, radius, color = "", cmap = ""):
 def magnitude(vx, vy): 
     return math.sqrt((vx * vx) + (vy * vy))
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
 
 animation_dataset_file = sys.argv[1]
 radiuses = sys.argv[2].split(',')
@@ -160,6 +160,9 @@ for r in radiuses:
 
             orientation.append(ry_array[i - 1])
 
+        #plt.plot([k for k in range(0, len(dx))], dx)
+        #plt.show()
+
         for i in range(1, len(dt_array)):
             dt = dt_array[i - 1]
 
@@ -232,12 +235,19 @@ for i, r in enumerate(radiuses):
 
 #    grid = sns.kdeplot(dataset_theta, dataset_speed, x="Angular speed (degrees/s)", y="Linear speed (m/s)", cmap='mako')
 #    grid = sns.kdeplot(trial_theta, trial_speed, x="Angular speed (degrees/s)", y="Linear speed (m/s)", cmap='autumn')
+    #print(np.isnan(dataset_speed)[np.isnan(dataset_speed) == True].shape)
+    #print(np.isnan(dataset_theta)[np.isnan(dataset_theta) == True].shape)   
+    data = {'theta': dataset_theta, 'speed': dataset_speed}
+    data = pd.DataFrame(data=data)
     xy = np.vstack([dataset_theta, dataset_speed])
-    z = gaussian_kde(xy)(xy)
-    grid = sns.scatterplot(dataset_theta, dataset_speed, c=z, cmap='mako')
+    z = gaussian_kde(xy)(xy) 
+    grid = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
+
+    data = {'theta': trial_theta, 'speed': trial_speed}
+    data = pd.DataFrame(data=data)
     xy = np.vstack([trial_theta, trial_speed])
     z = gaussian_kde(xy)(xy)
-    grid = sns.scatterplot(trial_theta, trial_speed, c=z, cmap='autumn')
+    grid = sns.scatterplot(trial_theta, trial_speed, x='theta', y='speed', c=z, cmap='autumn')
     grid.scatter(info["Angle speed"], info["Desired linear speed"], color='lime')
 
     # This is in order not to average the speed when transitioning
@@ -270,9 +280,9 @@ for i, r in enumerate(radiuses):
     # add your point
 
     fig_scm.set_size_inches((16, 9), forward=False)
-    fig_scm.savefig(str(r) + "_scm.eps", )
-    fig_ts.savefig(str(r) + "_ts.eps")
-    fig_ls.savefig(str(r) + "_ls.eps")
+    #fig_scm.savefig(str(r) + "_scm.eps", )
+    #fig_ts.savefig(str(r) + "_ts.eps")
+    #fig_ls.savefig(str(r) + "_ls.eps")
 
     trial_speed = np.asarray(trial_speed)
     

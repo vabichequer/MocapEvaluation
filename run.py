@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import math
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
 
 def PieChart(labels, sizes):
     fig = plt.figure()
