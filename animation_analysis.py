@@ -1,4 +1,4 @@
-from os import write
+import os
 import matplotlib.pyplot as plt
 import csv
 from pathlib import Path
@@ -39,11 +39,13 @@ def read_csv(radius, prefix="", sufixes=""):
     return frame_collection, info
 
 def PieChart(labels, sizes):
-    plt.figure()
+    fig = plt.figure()
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     plt.pie(sizes, labels=labels, autopct='%1.1f%%',
             shadow=True, startangle=90)
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    return fig
 
 
 def autolabel(rects):
@@ -64,14 +66,20 @@ def write_csv(name, info):
     
     f.close()
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
+PLOT_ENABLED = eval(sys.argv[1])
+print(PLOT_ENABLED)
 
-if (len(sys.argv) > 1):
-    PLOT_ENABLED = bool(sys.argv[1])
+if (len(sys.argv) > 2):
+    FOLDER_FILES = str(Path(sys.argv[2]))
 else:
-    PLOT_ENABLED = False
+    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/5"))
 
 radiuses = [5, 10, 15]
+
+if (os.path.isdir(FOLDER_FILES + '/images/')):
+    pass
+else:
+    os.mkdir(FOLDER_FILES + '/images/')
 
 for r in radiuses:
     blend_statuses = []
@@ -91,11 +99,12 @@ for r in radiuses:
     print(occurences_clips)
     print(occurences_statuses)
 
-    if (PLOT_ENABLED):
-        labels = ['Used', 'Not used']
-        sizes = [len(occurences_clips), 37]
-        PieChart(labels, sizes)
-        PieChart(occurences_statuses.keys(), occurences_statuses.values())
+    labels = ['Used', 'Not used']
+    sizes = [len(occurences_clips), 37]
+    fig = PieChart(labels, sizes)
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_used_vs_unused_animations.svg")
+    fig = PieChart(occurences_statuses.keys(), occurences_statuses.values())
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_animation_statuses.svg")
 
     clips = np.asarray(clips)
     transition_locations = np.where(np.roll(clips,1)!=clips)[0]
@@ -105,11 +114,11 @@ for r in radiuses:
 
     occurences_clips['Transitions'] = number_of_transitions
 
-    if (PLOT_ENABLED):
-        bar_fig = plt.figure()
-        barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
-        autolabel(barlist)
-        barlist[-1].set_color('r')
+    bar_fig = plt.figure()
+    barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
+    autolabel(barlist)
+    barlist[-1].set_color('r')
+    bar_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_occurences.svg")
 
     
 
@@ -117,9 +126,9 @@ for r in radiuses:
     # an animation. Therefore, every time it changes, you can consider that 0.3s were taken to actually do it. Hence, the
     # multiplication by 0.3s.
 
-    if (PLOT_ENABLED):
-        labels = ["Pure animation", "Blending animations"]
-        PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
+    labels = ["Pure animation", "Blending animations"]
+    fig = PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_blend_vs_pure_animations.svg")
 
     nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
 
