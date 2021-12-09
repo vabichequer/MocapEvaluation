@@ -9,9 +9,9 @@ from scipy.stats import gaussian_kde
 from scipy.spatial.distance import cdist
 import pandas as pd
 import os
-import statsmodels.api as sm
-from sklearn.decomposition import PCA
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, SmoothBivariateSpline, splev, splrep
+from scipy.signal import bspline
+import rpy2.robjects as robjects
 
 ### ARGUMENTS ###
 # <string> CSV file name
@@ -59,7 +59,7 @@ PLOT_ENABLED = eval(sys.argv[4])
 if (len(sys.argv) > 5):
     FOLDER_FILES = str(Path(sys.argv[5]))
 else:
-    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Debug/speed"))
+    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
 
 csv_file_name = []
 csv_file_name.append(animation_dataset_file)
@@ -251,22 +251,26 @@ for idx, r in enumerate(radiuses):
 
     plt.figure()
     plt.title("Angular speed")
-    plt.plot([x for x in range(0, len(theta))], theta, label='original')
-    plt.plot([x for x in range(0, len(theta))], [np.mean(theta) for x in range(0, len(theta))], label='mean')
-    plt.scatter([x for x in range(0, len(theta))], theta)
-    n_comp = 2
-    pca = PCA(n_components=n_comp)
-    pcs = pca.fit_transform(np.column_stack(([x for x in range(0, len(theta))], theta)))
-    indxs = ["PC" + str(i + 1) for i in range(0, n_comp)]
-    pcs = pd.DataFrame(data=pcs, columns=indxs)
-    for i in range(0, n_comp):
-        plt.plot([x for x in range(0, len(theta))], pcs["PC" + str(i + 1)], label=indxs[i])
-    plt.plot([x for x in range(0, len(theta))], theta -  pcs["PC2"], label='original - PC2')
+    x = [x for x in range(0, len(theta))]
+    plt.plot(x, theta, label='original')
+    plt.plot(x, [np.mean(theta) for x in range(0, len(theta))], label='mean')
+    plt.scatter(x, theta)
+    for lbda in range(0, 10):
+        r_x = robjects.FloatVector(x)
+        r_y = robjects.FloatVector(theta)
+        r_smooth_spline = robjects.r['smooth.spline'] #extract R function
+        kwargs = {"x": r_x, "y": r_y, "lambda":  1/(pow(10,lbda))}
+        spl = r_smooth_spline(**kwargs)
+        y = np.array(robjects.r['predict'](spl,r_x).rx2('y'))
+        plt.plot(x, y, label='spline lambda ' + str(1/(pow(10,lbda))))
+    
     plt.legend()
 
     #plt.figure()
     #plt.scatter(theta, speed)
     plt.show()
+
+    exit()
 
 file_nbr = len(csv_file_name)
 
