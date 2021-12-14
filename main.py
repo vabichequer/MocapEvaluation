@@ -9,13 +9,14 @@ from scipy.stats import gaussian_kde
 from scipy.spatial.distance import cdist
 import pandas as pd
 import os
-from scipy.interpolate import UnivariateSpline, SmoothBivariateSpline, splev, splrep
-from scipy.signal import bspline
-import rpy2.robjects as robjects
+import itertools
+import random
 
 ### ARGUMENTS ###
 # <string> CSV file name
 # <int> sampling rate
+
+marker = itertools.cycle((',', '+', '.', 'o', '*')) 
 
 def pause():
     programPause = input("Press the <ENTER> key to continue...")
@@ -68,7 +69,10 @@ for r in radiuses:
 
 print('*' * 25)
 print("Program setup:")
-print("CSV files names: ", csv_file_name)
+print("Animation dataset file: ", animation_dataset_file)
+print("CSV files names: ", csv_file_name[1:])
+print("Time windows: ", time_windows)
+print("Plot?: ", PLOT_ENABLED)
 print('*' * 25)
 
 radiuses.insert(0, 0) # for the dataset
@@ -111,11 +115,6 @@ def read_csv(radius = "", prefix="", sufix=""):
     if (sufix == "final" or sufix == "dataset"):
         return x, y, ry, t
 
-time_acc = 0
-dtheta_acc = 0
-dx_acc = 0
-dy_acc = 0
-
 for idx, r in enumerate(radiuses):  
     if (r == 0):
         x, y, ry, t = read_csv(prefix = "../animation", sufix = "dataset")
@@ -134,8 +133,6 @@ for idx, r in enumerate(radiuses):
 
     speed = []
     theta = []
-    single_speed = []
-    single_theta = []
     all_dt_arrays = []
     all_x_arrays = []
     all_y_arrays = []
@@ -145,6 +142,9 @@ for idx, r in enumerate(radiuses):
     x_array = []
     y_array = []
     ry_array = []
+    
+    last_size = 0
+    current_size = 0
 
     for i in range(1, len(t)):
         if t[i - 1] < t[i]:
@@ -168,109 +168,101 @@ for idx, r in enumerate(radiuses):
 
     for i in range(0, len(all_dt_arrays)):    
         dt_array = all_dt_arrays[i]
-        x_array = all_x_arrays[i]
-        y_array = all_y_arrays[i]
+        x_array = np.asarray(all_x_arrays[i])
+        y_array = np.asarray(all_y_arrays[i])
         ry_array = all_ry_arrays[i]
         dx = []
         dy = []
         orientation = []
-
+        
         orientation.append(ry_array[0])
 
         for j in range(1, len(dt_array)):
             dx.append(x_array[j] - x_array[j - 1])
             dy.append(y_array[j] - y_array[j - 1])
+            orientation.append(ry_array[j])            
 
-            orientation.append(ry_array[j])
-
-        #plt.plot([k for k in range(0, len(dx))], dx)
-        #plt.show()
-
-        frames_left = True
+        x = [j for j in range(0, len(orientation))]
+        
+        speed_acc = []
+        theta_acc = []
+        time_acc = []
+        frames_last = False
 
         for j in range(1, len(dt_array)):
             dt = dt_array[j - 1]
 
-            dtheta = orientation[j] - orientation[j - 1]       
+            dtheta = orientation[j] - orientation[j - 1]
 
             if (dtheta >= 180):
                 dtheta -= 360
             elif (dtheta <= -180):
                 dtheta += 360            
 
-            if (time_windows[idx] > 0):
-                if (time_acc > time_windows[idx]):
-                    speed.append(magnitude(dx_acc / time_acc, dy_acc / time_acc))
-                    theta.append(dtheta_acc / time_acc)
-                    single_speed.append(magnitude(dx_acc / time_acc, dy_acc / time_acc))
-                    single_theta.append(dtheta_acc / time_acc)
-                    time_acc, dtheta_acc, dx_acc, dy_acc = 0,0,0,0
-                    frames_left = False
+            if (abs(dtheta / dt) > 510):
+                print(39*"*")
+                print("Potential problem detected. (Overspeed)")     
+                print("Speed captured:", dtheta / dt)           
+                print("Radius:", r)
+                print("Animation:", i + 1)
+                print("Frame:", j)
+                print(39*"*")
+                continue
+                print("dtheta:", dtheta)
+                print("orientation[j]:", orientation[j])
+                print("orientation[j - 1]:", orientation[j - 1])
+                print("dt:", dt)
+                print("dtheta/dt:", dtheta/dt)
+
+                fig, ax = plt.subplots()
+                plt.plot(x, orientation, 'o', x, orientation, label='original')
+                plt.scatter([j], [orientation[j]], s = 100, c='r') 
+                plt.scatter([j - 1], [orientation[j - 1]], s = 100, c='g') 
+                plt.legend()
+
+                for ann in range(0, len(x_array)):
+                    ax.annotate(ann, (x[ann], orientation[ann]))
+                    
+                fig, ax = plt.subplots()
+                plt.plot(x_array, y_array, 'o', x_array, y_array)
+                
+                for ann in range(0, len(x_array)):
+                    ax.annotate(ann, (x_array[ann], y_array[ann]))             
+
+                plt.show()
+
+            if (time_windows[idx] > 0):                
+                if (sum(time_acc) <= time_windows[idx]):
+                    time_acc.append(dt)
+                    speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
+                    theta_acc.append(dtheta / dt)
+                    frames_last = True
                 else:
-                    frames_left = True
-                    dtheta_acc += dtheta
-                    dx_acc += dx[j - 1]
-                    dy_acc += dy[j - 1]
-                    time_acc += dt
+                    speed.append(np.mean(speed_acc))
+                    theta.append(np.mean(theta_acc))
+                    frames_last = False
+                    while (sum(time_acc) > time_windows[idx]):
+                        time_acc.pop(0)
+                        speed_acc.pop(0)
+                        theta_acc.pop(0) 
             else:
-                frames_left = False
                 speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
                 theta.append(dtheta / dt)
-                single_speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
-                single_theta.append(dtheta / dt)
-        
-        if (frames_left):
-            speed.append(magnitude(dx_acc / time_acc, dy_acc / time_acc))
-            theta.append(dtheta_acc / time_acc)
-            single_speed.append(magnitude(dx_acc / time_acc, dy_acc / time_acc))
-            single_theta.append(dtheta_acc / time_acc)
+                   
+        if (frames_last):       
+            speed.append(np.mean(speed_acc))
+            theta.append(np.mean(theta_acc))
 
-            # if ((dtheta / dt) > 4000):
-            #     print("dtheta: ", dtheta)
-            #     print("dt: ", dt)
-            #     print("dtheta / dt: ", dtheta / dt)
-            #     print("i, j: ", i, ",", j)
-            #     pause()
-        color_array.append(np.random.choice(range(256), size=3))
-        dataset_speeds.append(single_speed)
-        dataset_thetas.append(single_theta)
-        single_speed = []
-        single_theta = []
+        if (r==0):
+            current_size = len(speed)
+            color_array.append((random.random(), random.random(), random.random()))
+            dataset_speeds.append(speed[last_size:current_size])
+            dataset_thetas.append(theta[last_size:current_size])
+            last_size = current_size
 
     speed_arrays.append(np.asarray(speed))
     theta_arrays.append(np.asarray(theta))
-
-    print(len(speed))
-    print(len(theta))
-
-    plt.figure()
-    plt.title("Linear speed")    
-    plt.plot([x for x in range(0, len(speed))], speed)
-    plt.plot([x for x in range(0, len(speed))], [np.mean(speed) for x in range(0, len(speed))])
-    plt.scatter([x for x in range(0, len(speed))], speed)
-
-    plt.figure()
-    plt.title("Angular speed")
-    x = [x for x in range(0, len(theta))]
-    plt.plot(x, theta, label='original')
-    plt.plot(x, [np.mean(theta) for x in range(0, len(theta))], label='mean')
-    plt.scatter(x, theta)
-    for lbda in range(0, 10):
-        r_x = robjects.FloatVector(x)
-        r_y = robjects.FloatVector(theta)
-        r_smooth_spline = robjects.r['smooth.spline'] #extract R function
-        kwargs = {"x": r_x, "y": r_y, "lambda":  1/(pow(10,lbda))}
-        spl = r_smooth_spline(**kwargs)
-        y = np.array(robjects.r['predict'](spl,r_x).rx2('y'))
-        plt.plot(x, y, label='spline lambda ' + str(1/(pow(10,lbda))))
-    
-    plt.legend()
-
-    #plt.figure()
-    #plt.scatter(theta, speed)
-    plt.show()
-
-    exit()
+    print("Radius", r, "processed.")
 
 file_nbr = len(csv_file_name)
 
@@ -279,11 +271,13 @@ radiuses.remove(0)
 # different motions
 plt.figure(figsize=(16, 9))
 for colors, speeds, thetas in zip(color_array, dataset_speeds, dataset_thetas):
-    data = {'theta': thetas, 'speed': speeds}
-    data = pd.DataFrame(data=data)
-    sns.scatterplot(data=data, x='theta', y='speed', palette=colors)
-    sns.lineplot(data=data, x='theta', y='speed', palette=colors)
-
+    #data = {'theta': thetas, 'speed': speeds}
+    #data = pd.DataFrame(data=data)
+    #sns.scatterplot(data=data, x='theta', y='speed', palette=colors)
+    #sns.lineplot(data=data, x='theta', y='speed', palette=colors)
+    plt.scatter(thetas, speeds, color=colors, marker=next(marker))
+    plt.plot(thetas, speeds, color=colors)
+    
 for i, r in enumerate(radiuses):
     info = read_csv(r, sufix = "info")
     frames = read_csv(r, sufix = "frames")
