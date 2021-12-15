@@ -5,18 +5,39 @@ import csv
 import sys
 from pathlib import Path
 import seaborn as sns
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, norm
 from scipy.spatial.distance import cdist
 import pandas as pd
 import os
 import itertools
 import random
+import collections
 
 ### ARGUMENTS ###
 # <string> CSV file name
 # <int> sampling rate
 
 marker = itertools.cycle((',', '+', '.', 'o', '*')) 
+
+def plotError(error_array, error_type):
+    fig = plt.figure()
+    mu, std = norm.fit(error_array)
+    data = {'error': error_array}
+    data = pd.DataFrame(data=data)
+    # Plot the histogram
+    sns.histplot(data, bins=25, stat="probability")
+
+    # Plot the PDF.
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mu, std)
+    p = p/np.linalg.norm(p)
+    plt.plot(x, p, 'k', linewidth=2)
+    plt.xlabel(error_type + " speed error")
+    plt.ylabel("Proportion")
+    title = error_type + " speed error results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+    return fig
 
 def pause():
     programPause = input("Press the <ENTER> key to continue...")
@@ -199,7 +220,8 @@ for idx, r in enumerate(radiuses):
             elif (dtheta <= -180):
                 dtheta += 360            
 
-            if (abs(dtheta / dt) > 510):
+            if (abs(dtheta / dt) > 510): 
+                stop = False         
                 print(39*"*")
                 print("Potential problem detected. (Overspeed)")     
                 print("Speed captured:", dtheta / dt)           
@@ -207,7 +229,7 @@ for idx, r in enumerate(radiuses):
                 print("Animation:", i + 1)
                 print("Frame:", j)
                 print(39*"*")
-                continue
+                #continue
                 print("dtheta:", dtheta)
                 print("orientation[j]:", orientation[j])
                 print("orientation[j - 1]:", orientation[j - 1])
@@ -287,6 +309,7 @@ for i, r in enumerate(radiuses):
     trial_speed = speed_arrays[i + 1]
     trial_theta = theta_arrays[i + 1]
 
+    # Plot the dataset
     plt.figure(figsize=(16, 9)) 
     data = {'theta': dataset_theta, 'speed': dataset_speed}
     data = pd.DataFrame(data=data)
@@ -294,19 +317,25 @@ for i, r in enumerate(radiuses):
     z = gaussian_kde(xy)(xy) 
     coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
 
+    # Plot the traejctory points
     data = {'theta': trial_theta, 'speed': trial_speed}
     data = pd.DataFrame(data=data)
     xy = np.vstack([trial_theta, trial_speed])
     z = gaussian_kde(xy)(xy)
     coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='autumn')
+
+    # Plot the desired point
     desiredPoint = [info["Angle speed"], info["Desired linear speed"]]
     coverage.scatter(desiredPoint[0], desiredPoint[1], color='lime')
-    
-    plt.figure()
-    distance = cdist([desiredPoint], data, metric='euclidean')[0]
-    df = pd.DataFrame({'x': [j for j in range(0, len(distance))], 'Distance': distance})
-    ls_dist = sns.histplot(data=df, x='Distance', kde=True)
-    ls_dist.set(xlabel='Distance', title="Distance from reference point")
+
+    # Calculate speed error
+    # Angular
+    angular_error = trial_theta - info["Angle speed"]
+    aerror_fig = plotError(angular_error, "Angular")
+
+    # Linear
+    linear_error = trial_speed - info["Desired linear speed"]
+    lserror_fig = plotError(linear_error, "Linear")
 
     # This is in order not to average the speed when transitioning
     # this needs to be raw data, otherwise I can't pinpoint where
@@ -339,9 +368,10 @@ for i, r in enumerate(radiuses):
         os.mkdir(FOLDER_FILES + '/images/')
 
     coverage.figure.savefig(FOLDER_FILES + '/images/' + str(r) + "_coverage.svg")
-    ls_dist.figure.savefig(FOLDER_FILES + '/images/' + str(r) + "_ls_dist.svg")
     fig_ts.savefig(FOLDER_FILES + '/images/' + str(r) + "_turning_speed.svg")
     fig_ls.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed.svg")
+    aerror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_angular_speed_error.svg")
+    lserror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed_error.svg")
 
     trial_speed = np.asarray(trial_speed)
     
