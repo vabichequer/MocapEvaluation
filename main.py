@@ -194,17 +194,33 @@ for idx, r in enumerate(radiuses):
         ry_array = all_ry_arrays[i]
         dx = []
         dy = []
-        orientation = []
-        
+        orientation = []     
+
         orientation.append(ry_array[0])
 
         for j in range(1, len(dt_array)):
             dx.append(x_array[j] - x_array[j - 1])
             dy.append(y_array[j] - y_array[j - 1])
-            orientation.append(ry_array[j])            
+            orientation.append(ry_array[j])   
+
+        if (r == 0):
+            for j in range(0, i):
+                if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
+                    diff = sum(np.asarray(all_x_arrays[i]) - np.asarray(all_x_arrays[j]))
+                    if (diff == 0):
+                        print("Animations", i, "and", j, "are mirrored.")
+                        x_array = -x_array
+                        orientation = -np.asarray(orientation)
 
         x = [j for j in range(0, len(orientation))]
-        
+
+        if (r == 0):
+            for j in range(0, i):
+                if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
+                    diff = sum(np.asarray(all_x_arrays[i]) - np.asarray(all_x_arrays[j]))
+                    if (diff == 0):
+                        print("Animations", i, "and", j, "are mirrored.")
+
         speed_acc = []
         theta_acc = []
         time_acc = []
