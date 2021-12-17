@@ -41,35 +41,7 @@ def plotError(error_array, error_type):
 
 def pause():
     programPause = input("Press the <ENTER> key to continue...")
-
-def PieChart(labels, sizes):
-    plt.figure()
-    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%',
-            shadow=True, startangle=90)
-
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-def scatter(fig, ax, x, y, alpha, radius, color = "", cmap = ""):    
-    if (color == ""):
-        xy = np.vstack([x,y])
-        grid_x, grid_y = np.mgrid[min(x):max(x):100j, min(y):max(y):100j]
-        positions = np.vstack([grid_x.ravel(), grid_y.ravel()])
-        z = gaussian_kde(xy)(xy)
-        f = np.reshape(z[positions].T, grid_x.shape)
-        idx = z.argsort()
-        x, y, z = np.asarray(x)[idx], np.asarray(y)[idx], np.asarray(z)[idx]
-        cax = ax.scatter(x, y, alpha=alpha, c=z, s=30, cmap=cmap)
-        cset = plt.contour(x,y,f)
-        plt.clabel(cset, inline=1, fontsize=10)
-        fig.colorbar(cax)
-    else:
-        ax.scatter(x, y, alpha=alpha, c=color, s=30)
-
-    ax.set_ylabel("Linear speed (m/s)")
-    ax.set_xlabel("Turning speed (degrees/s)")
-    ax.set_title("Speed coverage map, radius: " + str(radius))
-    
-
+   
 def magnitude(vx, vy): 
     return math.sqrt((vx * vx) + (vy * vy))
 
@@ -108,10 +80,8 @@ dt_arrays = []
 def read_csv(radius = "", prefix="", sufix=""):
     info = {}
     frames = []    
-    x = []
-    y = []
-    ry = []
-    t = []
+    x, y, ry, t = [], [], [], []
+    all_x, all_y, all_ry, all_dt = [], [], [], []
 
     with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
         read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
@@ -122,11 +92,26 @@ def read_csv(radius = "", prefix="", sufix=""):
             for row in read_csv:
                 frames.append(int(row[0]))
         if (sufix == "final" or sufix == "dataset"):
-            for row in read_csv:   
+            time = 0
+            last_size = 0
+            for current_size, row in enumerate(read_csv):
                 x.append(float(row[1]))
                 y.append(float(row[3]))
                 ry.append(float(row[5]))
-                t.append(float(row[0]))    
+                t.append(float(row[0]))
+                if (float(row[0]) < time):
+                    all_x.append(np.asarray(x[last_size:current_size]))
+                    all_y.append(np.asarray(y[last_size:current_size]))
+                    all_ry.append(np.asarray(ry[last_size:current_size]))
+                    all_dt.append(np.diff(t[last_size:current_size]))
+                    last_size = current_size
+                time = float(row[0])
+
+            all_x.append(np.asarray(x[last_size:current_size]))
+            all_y.append(np.asarray(y[last_size:current_size]))
+            all_ry.append(np.asarray(ry[last_size:current_size]))
+            all_dt.append(np.diff(t[last_size:current_size]))
+
     csvfile.close()
         
     if (sufix == "info"):   
@@ -134,138 +119,81 @@ def read_csv(radius = "", prefix="", sufix=""):
     if (sufix == "frames"):
         return frames
     if (sufix == "final" or sufix == "dataset"):
-        return x, y, ry, t
+        return np.asarray(all_x), np.asarray(all_y), np.asarray(all_ry), np.asarray(all_dt)
 
 for idx, r in enumerate(radiuses):  
     if (r == 0):
-        x, y, ry, t = read_csv(prefix = "../animation", sufix = "dataset")
+        all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "../animation", sufix = "dataset")
     else:
-        x, y, ry, t = read_csv(r, sufix = "final")
-
-    x = np.asarray(x)
-    y = np.asarray(y)
-    ry = np.asarray(ry)
+        all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
 
     print("r: ", r)
-    print("t size: ", len(t))
-    print("X size: ", len(x))
-    print("Y size: ", len(y))
-    print("RY size: ", len(ry), '\n')
+    print("t size: ", all_dt_arrays.shape)
+    print("X size: ", all_x_arrays.shape)
+    print("Y size: ", all_y_arrays.shape)
+    print("RY size: ", all_ry_arrays.shape, '\n')
 
     speed = []
     theta = []
-    all_dt_arrays = []
-    all_x_arrays = []
-    all_y_arrays = []
-    all_ry_arrays = []
 
-    dt_array = []
-    x_array = []
-    y_array = []
-    ry_array = []
-    
     last_size = 0
-    current_size = 0
-
-    for i in range(1, len(t)):
-        if t[i - 1] < t[i]:
-            dt_array.append(t[i] - t[i - 1])
-            x_array.append(x[i])
-            y_array.append(y[i])
-            ry_array.append(ry[i])
-        else:
-            all_dt_arrays.append(dt_array)
-            all_x_arrays.append(x_array)
-            all_y_arrays.append(y_array)
-            all_ry_arrays.append(ry_array)
-            dt_array = []
-            x_array = []
-            y_array = []
-            ry_array = []
-    all_dt_arrays.append(dt_array)
-    all_x_arrays.append(x_array)
-    all_y_arrays.append(y_array)
-    all_ry_arrays.append(ry_array)
 
     for i in range(0, len(all_dt_arrays)):    
-        dt_array = all_dt_arrays[i]
-        x_array = np.asarray(all_x_arrays[i])
-        y_array = np.asarray(all_y_arrays[i])
-        ry_array = all_ry_arrays[i]
-        dx = []
-        dy = []
-        orientation = []     
-
-        orientation.append(ry_array[0])
-
-        for j in range(1, len(dt_array)):
-            dx.append(x_array[j] - x_array[j - 1])
-            dy.append(y_array[j] - y_array[j - 1])
-            orientation.append(ry_array[j])   
+        dx = np.diff(all_x_arrays[i])
+        dy = np.diff(all_y_arrays[i])  
 
         if (r == 0):
             for j in range(0, i):
                 if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
-                    diff = sum(np.asarray(all_x_arrays[i]) - np.asarray(all_x_arrays[j]))
+                    diff = sum(all_x_arrays[i] - all_x_arrays[j])
                     if (diff == 0):
                         print("Animations", i, "and", j, "are mirrored.")
-                        x_array = -x_array
-                        orientation = -np.asarray(orientation)
+                        all_x_arrays[i] = -all_x_arrays[i]
+                        all_ry_arrays[i] = -all_ry_arrays[i]
 
-        x = [j for j in range(0, len(orientation))]
-
-        if (r == 0):
-            for j in range(0, i):
-                if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
-                    diff = sum(np.asarray(all_x_arrays[i]) - np.asarray(all_x_arrays[j]))
-                    if (diff == 0):
-                        print("Animations", i, "and", j, "are mirrored.")
+        x = [j for j in range(0, len(all_ry_arrays[i]))]
 
         speed_acc = []
         theta_acc = []
         time_acc = []
         frames_last = False
+        dtheta = np.diff(all_ry_arrays[i])
 
-        for j in range(1, len(dt_array)):
-            dt = dt_array[j - 1]
+        dtheta[dtheta >= 180] -= 360
+        dtheta[dtheta <= -180] += 360
+        
+        for j in range(1, len(all_dt_arrays[i])):
+            dt = all_dt_arrays[i][j - 1]                  
 
-            dtheta = orientation[j] - orientation[j - 1]
-
-            if (dtheta >= 180):
-                dtheta -= 360
-            elif (dtheta <= -180):
-                dtheta += 360            
-
-            if (abs(dtheta / dt) > 510): 
-                stop = False         
+            if (abs(dtheta[j] / dt) > 510):      
                 print(39*"*")
                 print("Potential problem detected. (Overspeed)")     
-                print("Speed captured:", dtheta / dt)           
+                print("Speed captured:", dtheta[j] / dt)           
                 print("Radius:", r)
                 print("Animation:", i + 1)
                 print("Frame:", j)
                 print(39*"*")
-                #continue
-                print("dtheta:", dtheta)
-                print("orientation[j]:", orientation[j])
-                print("orientation[j - 1]:", orientation[j - 1])
+                continue
+                print("dtheta:", dtheta[j])
+                print("orientation[j]:", all_ry_arrays[i][j])
+                print("orientation[j - 1]:", all_ry_arrays[i][j - 1])
                 print("dt:", dt)
-                print("dtheta/dt:", dtheta/dt)
+                print("dtheta/dt:", dtheta[j]/dt)
 
                 fig, ax = plt.subplots()
-                plt.plot(x, orientation, 'o', x, orientation, label='original')
-                plt.scatter([j], [orientation[j]], s = 100, c='r') 
-                plt.scatter([j - 1], [orientation[j - 1]], s = 100, c='g') 
+                plt.plot(x, all_ry_arrays[i], 'o', x, all_ry_arrays[i], label='original')
+                plt.scatter([j], [all_ry_arrays[i][j]], s = 100, c='r') 
+                plt.scatter([j - 1], [all_ry_arrays[i][j - 1]], s = 100, c='g') 
                 plt.legend()
 
-                for ann in range(0, len(x_array)):
-                    ax.annotate(ann, (x[ann], orientation[ann]))
+                for ann in range(0, len(all_x_arrays[i])):
+                    ax.annotate(ann, (x[ann], all_ry_arrays[i][ann]))
                     
                 fig, ax = plt.subplots()
-                plt.plot(x_array, y_array, 'o', x_array, y_array)
+                plt.plot(all_x_arrays[i], all_y_arrays[i], 'o', all_x_arrays[i], all_y_arrays[i])
                 
-                for ann in range(0, len(x_array)):
-                    ax.annotate(ann, (x_array[ann], y_array[ann]))             
+                for ann in range(0, len(all_x_arrays[i])):
+                    ax.annotate(ann, (all_x_arrays[i][ann], all_y_arrays[i][ann]))
 
                 plt.show()
 
@@ -273,7 +201,7 @@ for idx, r in enumerate(radiuses):
                 if (sum(time_acc) <= time_windows[idx]):
                     time_acc.append(dt)
                     speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
-                    theta_acc.append(dtheta / dt)
+                    theta_acc.append(dtheta[j] / dt)
                     frames_last = True
                 else:
                     speed.append(np.mean(speed_acc))
@@ -285,9 +213,10 @@ for idx, r in enumerate(radiuses):
                         theta_acc.pop(0) 
             else:
                 speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
-                theta.append(dtheta / dt)
+                theta.append(dtheta[j] / dt)
                    
-        if (frames_last):       
+        if (frames_last): 
+            print("frames")      
             speed.append(np.mean(speed_acc))
             theta.append(np.mean(theta_acc))
 
