@@ -18,6 +18,7 @@ import collections
 # <int> sampling rate
 
 marker = itertools.cycle((',', '+', '.', 'o', '*')) 
+extension = "png"
 
 def plotError(error_array, error_type):
     fig = plt.figure()
@@ -215,8 +216,7 @@ for idx, r in enumerate(radiuses):
                 speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
                 theta.append(dtheta[j] / dt)
                    
-        if (frames_last): 
-            print("frames")      
+        if (frames_last):     
             speed.append(np.mean(speed_acc))
             theta.append(np.mean(theta_acc))
 
@@ -236,7 +236,7 @@ file_nbr = len(csv_file_name)
 radiuses.remove(0)
 
 # different motions
-plt.figure(figsize=(16, 9))
+different_motions = plt.figure(figsize=(16, 9))
 for colors, speeds, thetas in zip(color_array, dataset_speeds, dataset_thetas):
     #data = {'theta': thetas, 'speed': speeds}
     #data = pd.DataFrame(data=data)
@@ -312,12 +312,13 @@ for i, r in enumerate(radiuses):
     else:
         os.mkdir(FOLDER_FILES + '/images/')
 
-    coverage.figure.savefig(FOLDER_FILES + '/images/' + str(r) + "_coverage.svg")
-    fig_ts.savefig(FOLDER_FILES + '/images/' + str(r) + "_turning_speed.svg")
-    fig_ls.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed.svg")
-    aerror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_angular_speed_error.svg")
-    lserror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed_error.svg")
-
+    coverage.figure.savefig(FOLDER_FILES + '/images/' + str(r) + "_coverage." + extension)
+    fig_ts.savefig(FOLDER_FILES + '/images/' + str(r) + "_turning_speed." + extension)
+    fig_ls.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed." + extension)
+    aerror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_angular_speed_error." + extension)
+    lserror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed_error." + extension)
+    different_motions.savefig(FOLDER_FILES + '/images/' + str(r) + "_different_motions." + extension)
+    
     trial_speed = np.asarray(trial_speed)
     
     file = open(FOLDER_FILES + '/' + str(r) + "_speed_dump.csv", 'w', newline='')
