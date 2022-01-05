@@ -38,7 +38,7 @@ def plotError(error_array, error_type):
     plt.ylabel("Proportion")
     title = error_type + " speed error results: mu = %.2f,  std = %.2f" % (mu, std)
     plt.title(title)
-    return fig
+    return fig, mu, std
 
 def pause():
     programPause = input("Press the <ENTER> key to continue...")
@@ -254,8 +254,19 @@ for i, r in enumerate(radiuses):
     trial_speed = speed_arrays[i + 1]
     trial_theta = theta_arrays[i + 1]
 
+    # Calculate speed error
+    # Angular
+    angular_error = trial_theta - info["Angle speed"]
+    aerror_fig, mu_angular, std_angular = plotError(angular_error, "Angular")
+
+    # Linear
+    linear_error = trial_speed - info["Desired linear speed"]
+    lserror_fig, mu_linear, std_linear = plotError(linear_error, "Linear")
+
     # Plot the dataset
     plt.figure(figsize=(16, 9)) 
+    plt.rc('axes', axisbelow=True)
+    plt.grid(color='grey', linestyle='--', linewidth=1)
     data = {'theta': dataset_theta, 'speed': dataset_speed}
     data = pd.DataFrame(data=data)
     xy = np.vstack([dataset_theta, dataset_speed])
@@ -263,24 +274,16 @@ for i, r in enumerate(radiuses):
     coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
 
     # Plot the traejctory points
-    data = {'theta': trial_theta, 'speed': trial_speed}
-    data = pd.DataFrame(data=data)
-    xy = np.vstack([trial_theta, trial_speed])
-    z = gaussian_kde(xy)(xy)
-    coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='autumn')
+    # data = {'theta': trial_theta, 'speed': trial_speed}
+    # data = pd.DataFrame(data=data)
+    # xy = np.vstack([trial_theta, trial_speed])
+    # z = gaussian_kde(xy)(xy)
+    # coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='autumn')
 
     # Plot the desired point
     desiredPoint = [info["Angle speed"], info["Desired linear speed"]]
-    coverage.scatter(desiredPoint[0], desiredPoint[1], color='lime')
-
-    # Calculate speed error
-    # Angular
-    angular_error = trial_theta - info["Angle speed"]
-    aerror_fig = plotError(angular_error, "Angular")
-
-    # Linear
-    linear_error = trial_speed - info["Desired linear speed"]
-    lserror_fig = plotError(linear_error, "Linear")
+    plt.errorbar(desiredPoint[0], desiredPoint[1], xerr=std_angular, yerr=std_linear, color='red', capsize=5.0)
+    coverage.scatter(desiredPoint[0], desiredPoint[1], color='lime', zorder=2)
 
     # This is in order not to average the speed when transitioning
     # this needs to be raw data, otherwise I can't pinpoint where
