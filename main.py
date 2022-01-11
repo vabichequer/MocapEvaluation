@@ -123,114 +123,131 @@ def read_csv(radius = "", prefix="", sufix=""):
         return np.asarray(all_x), np.asarray(all_y), np.asarray(all_ry), np.asarray(all_dt)
 
 for idx, r in enumerate(radiuses):  
-    if (r == 0):
-        all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "../animation", sufix = "dataset")
+    if(os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz") and r == 0):
+        print("Animation dataset dump loaded.")
+        pass
     else:
-        all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
-
-    print("r: ", r)
-    print("t size: ", all_dt_arrays.shape)
-    print("X size: ", all_x_arrays.shape)
-    print("Y size: ", all_y_arrays.shape)
-    print("RY size: ", all_ry_arrays.shape, '\n')
-
-    speed = []
-    theta = []
-
-    last_size = 0
-
-    for i in range(0, len(all_dt_arrays)):    
-        dx = np.diff(all_x_arrays[i])
-        dy = np.diff(all_y_arrays[i])  
-
         if (r == 0):
-            for j in range(0, i):
-                if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
-                    diff = sum(all_x_arrays[i] - all_x_arrays[j])
-                    if (diff == 0):
-                        print("Animations", i, "and", j, "are mirrored.")
-                        all_x_arrays[i] = -all_x_arrays[i]
-                        all_ry_arrays[i] = -all_ry_arrays[i]
+            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "../animation", sufix = "dataset")
+        else:
+            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
 
-        x = [j for j in range(0, len(all_ry_arrays[i]))]
+        print("r: ", r)
+        print("t size: ", all_dt_arrays.shape)
+        print("X size: ", all_x_arrays.shape)
+        print("Y size: ", all_y_arrays.shape)
+        print("RY size: ", all_ry_arrays.shape, '\n')
 
-        speed_acc = []
-        theta_acc = []
-        time_acc = []
-        frames_last = False
-        dtheta = np.diff(all_ry_arrays[i])
+        speed = []
+        theta = []
 
-        dtheta[dtheta >= 180] -= 360
-        dtheta[dtheta <= -180] += 360
-        
-        for j in range(1, len(all_dt_arrays[i])):
-            dt = all_dt_arrays[i][j - 1]                  
+        last_size = 0
 
-            if (abs(dtheta[j] / dt) > 510):      
-                print(39*"*")
-                print("Potential problem detected. (Overspeed)")     
-                print("Speed captured:", dtheta[j] / dt)           
-                print("Radius:", r)
-                print("Animation:", i + 1)
-                print("Frame:", j)
-                print(39*"*")
-                continue
-                print("dtheta:", dtheta[j])
-                print("orientation[j]:", all_ry_arrays[i][j])
-                print("orientation[j - 1]:", all_ry_arrays[i][j - 1])
-                print("dt:", dt)
-                print("dtheta/dt:", dtheta[j]/dt)
+        for i in range(0, len(all_dt_arrays)):    
+            dx = np.diff(all_x_arrays[i])
+            dy = np.diff(all_y_arrays[i])  
 
-                fig, ax = plt.subplots()
-                plt.plot(x, all_ry_arrays[i], 'o', x, all_ry_arrays[i], label='original')
-                plt.scatter([j], [all_ry_arrays[i][j]], s = 100, c='r') 
-                plt.scatter([j - 1], [all_ry_arrays[i][j - 1]], s = 100, c='g') 
-                plt.legend()
+            if (r == 0):
+                for j in range(0, i):
+                    if (len(all_x_arrays[i]) == len(all_x_arrays[j])):
+                        diff = sum(all_x_arrays[i] - all_x_arrays[j])
+                        if (diff == 0):
+                            print("Animations", i, "and", j, "are mirrored.")
+                            all_x_arrays[i] = -all_x_arrays[i]
+                            all_ry_arrays[i] = -all_ry_arrays[i]
 
-                for ann in range(0, len(all_x_arrays[i])):
-                    ax.annotate(ann, (x[ann], all_ry_arrays[i][ann]))
+            x = [j for j in range(0, len(all_ry_arrays[i]))]
+
+            speed_acc = []
+            theta_acc = []
+            time_acc = []
+            frames_last = False
+            dtheta = np.diff(all_ry_arrays[i])
+
+            dtheta[dtheta >= 180] -= 360
+            dtheta[dtheta <= -180] += 360
+            
+            for j in range(1, len(all_dt_arrays[i])):
+                dt = all_dt_arrays[i][j - 1]                  
+
+                if (abs(dtheta[j] / dt) > 510):      
+                    print(39*"*")
+                    print("Potential problem detected. (Overspeed)")     
+                    print("Speed captured:", dtheta[j] / dt)           
+                    print("Radius:", r)
+                    print("Animation:", i + 1)
+                    print("Frame:", j)
+                    print(39*"*")
+                    continue
+                    print("dtheta:", dtheta[j])
+                    print("orientation[j]:", all_ry_arrays[i][j])
+                    print("orientation[j - 1]:", all_ry_arrays[i][j - 1])
+                    print("dt:", dt)
+                    print("dtheta/dt:", dtheta[j]/dt)
+
+                    fig, ax = plt.subplots()
+                    plt.plot(x, all_ry_arrays[i], 'o', x, all_ry_arrays[i], label='original')
+                    plt.scatter([j], [all_ry_arrays[i][j]], s = 100, c='r') 
+                    plt.scatter([j - 1], [all_ry_arrays[i][j - 1]], s = 100, c='g') 
+                    plt.legend()
+
+                    for ann in range(0, len(all_x_arrays[i])):
+                        ax.annotate(ann, (x[ann], all_ry_arrays[i][ann]))
+                        
+                    fig, ax = plt.subplots()
+                    plt.plot(all_x_arrays[i], all_y_arrays[i], 'o', all_x_arrays[i], all_y_arrays[i])
                     
-                fig, ax = plt.subplots()
-                plt.plot(all_x_arrays[i], all_y_arrays[i], 'o', all_x_arrays[i], all_y_arrays[i])
-                
-                for ann in range(0, len(all_x_arrays[i])):
-                    ax.annotate(ann, (all_x_arrays[i][ann], all_y_arrays[i][ann]))
+                    for ann in range(0, len(all_x_arrays[i])):
+                        ax.annotate(ann, (all_x_arrays[i][ann], all_y_arrays[i][ann]))
 
-                plt.show()
+                    plt.show()
 
-            if (time_windows[idx] > 0):                
-                if (sum(time_acc) <= time_windows[idx]):
-                    time_acc.append(dt)
-                    speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
-                    theta_acc.append(dtheta[j] / dt)
-                    frames_last = True
+                if (time_windows[idx] > 0):                
+                    if (sum(time_acc) <= time_windows[idx]):
+                        time_acc.append(dt)
+                        speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
+                        theta_acc.append(dtheta[j] / dt)
+                        frames_last = True
+                    else:
+                        speed.append(np.mean(speed_acc))
+                        theta.append(np.mean(theta_acc))
+                        frames_last = False
+                        while (sum(time_acc) > time_windows[idx]):
+                            time_acc.pop(0)
+                            speed_acc.pop(0)
+                            theta_acc.pop(0) 
                 else:
-                    speed.append(np.mean(speed_acc))
-                    theta.append(np.mean(theta_acc))
-                    frames_last = False
-                    while (sum(time_acc) > time_windows[idx]):
-                        time_acc.pop(0)
-                        speed_acc.pop(0)
-                        theta_acc.pop(0) 
-            else:
-                speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
-                theta.append(dtheta[j] / dt)
-                   
-        if (frames_last):     
-            speed.append(np.mean(speed_acc))
-            theta.append(np.mean(theta_acc))
+                    speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
+                    theta.append(dtheta[j] / dt)
+                    
+            if (frames_last):     
+                speed.append(np.mean(speed_acc))
+                theta.append(np.mean(theta_acc))
 
-        if (r==0):
-            current_size = len(speed)
-            color_array.append((random.random(), random.random(), random.random()))
-            dataset_speeds.append(speed[last_size:current_size])
-            dataset_thetas.append(theta[last_size:current_size])
-            last_size = current_size
+            if (r==0):
+                current_size = len(speed)
+                color_array.append((random.random(), random.random(), random.random()))
+                dataset_speeds.append(speed[last_size:current_size])
+                dataset_thetas.append(theta[last_size:current_size])
+                last_size = current_size
 
-    speed_arrays.append(np.asarray(speed))
-    theta_arrays.append(np.asarray(theta))
-    print("Radius", r, "processed.")
+        speed_arrays.append(np.asarray(speed))
+        theta_arrays.append(np.asarray(theta))
+        print("Radius", r, "processed.")
 
+if(not os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz")):
+    np.savez_compressed(FOLDER_FILES + "/../animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
+    np.savez_compressed(FOLDER_FILES + "/../different_motion_dump", color_array=color_array, dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
+else:
+    loaded = np.load(FOLDER_FILES + "/../animation_dataset_dump.npz")
+    speed_arrays.insert(0, loaded['dataset_speed'])
+    theta_arrays.insert(0, loaded['dataset_theta'])
+    loaded = np.load(FOLDER_FILES + "/../different_motion_dump.npz", allow_pickle=True)
+    color_array = loaded['color_array']
+    dataset_speeds = loaded['dataset_speeds']
+    dataset_thetas = loaded['dataset_thetas']
+
+        
 file_nbr = len(csv_file_name)
 
 radiuses.remove(0)
@@ -284,6 +301,8 @@ for i, r in enumerate(radiuses):
     desiredPoint = [info["Angle speed"], info["Desired linear speed"]]
     plt.errorbar(desiredPoint[0], desiredPoint[1], xerr=std_angular, yerr=std_linear, color='red', capsize=5.0)
     coverage.scatter(desiredPoint[0], desiredPoint[1], color='lime', zorder=2)
+
+    np.savez_compressed(FOLDER_FILES + "/" + str(r) + "_desiredPoint_and_error", dp=desiredPoint, error=[std_linear, std_angular])
 
     # This is in order not to average the speed when transitioning
     # this needs to be raw data, otherwise I can't pinpoint where
