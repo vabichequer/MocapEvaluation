@@ -20,6 +20,9 @@ import collections
 marker = itertools.cycle((',', '+', '.', 'o', '*')) 
 extension = "png"
 
+def floatToString(inputValue):
+    return ('%.15f' % inputValue).rstrip('0').rstrip('.')
+
 def plotError(error_array, error_type):
     fig = plt.figure()
     mu, std = norm.fit(error_array)
@@ -46,15 +49,23 @@ def pause():
 def magnitude(vx, vy): 
     return math.sqrt((vx * vx) + (vy * vy))
 
+print(25*'*')
+print(sys.argv[0], "start")
+print(25*'*')
+
 animation_dataset_file = sys.argv[1]
-radiuses = [int(x) for x in sys.argv[2].split(',')]
+radiuses = [floatToString(float(x)) for x in sys.argv[2].split(',')]
 time_windows = [float(x) for x in sys.argv[3].split(',')]
 PLOT_ENABLED = eval(sys.argv[4])
 
 if (len(sys.argv) > 5):
     FOLDER_FILES = str(Path(sys.argv[5]))
+    prefix = "animation"
+    parents = 1
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
+    prefix = "animation"
+    parents = 0
 
 csv_file_name = []
 csv_file_name.append(animation_dataset_file)
@@ -65,6 +76,7 @@ print('*' * 25)
 print("Program setup:")
 print("Animation dataset file: ", animation_dataset_file)
 print("CSV files names: ", csv_file_name[1:])
+print("Radiuses: ", radiuses)
 print("Time windows: ", time_windows)
 print("Plot?: ", PLOT_ENABLED)
 print('*' * 25)
@@ -78,13 +90,18 @@ dataset_speeds = []
 dataset_thetas = []
 dt_arrays = []
 
-def read_csv(radius = "", prefix="", sufix=""):
+def read_csv(radius = "", prefix="", sufix="", parents=0):
     info = {}
     frames = []    
     x, y, ry, t = [], [], [], []
     all_x, all_y, all_ry, all_dt = [], [], [], []
 
-    with open(FOLDER_FILES + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
+    if parents > 0:
+        p = str(Path(FOLDER_FILES).parents[parents])
+    else:
+        p = FOLDER_FILES
+
+    with open(p + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
         read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
         if (sufix == "info"):            
             for row in read_csv:
@@ -120,7 +137,7 @@ def read_csv(radius = "", prefix="", sufix=""):
     if (sufix == "frames"):
         return frames
     if (sufix == "final" or sufix == "dataset"):
-        return np.asarray(all_x), np.asarray(all_y), np.asarray(all_ry), np.asarray(all_dt)
+        return np.asarray(all_x, dtype=object), np.asarray(all_y, dtype=object), np.asarray(all_ry, dtype=object), np.asarray(all_dt, dtype=object)
 
 for idx, r in enumerate(radiuses):  
     if(os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz") and r == 0):
@@ -128,15 +145,15 @@ for idx, r in enumerate(radiuses):
         pass
     else:
         if (r == 0):
-            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "../animation", sufix = "dataset")
+            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = prefix, sufix = "dataset", parents=parents)
         else:
             all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
 
-        print("r: ", r)
-        print("t size: ", all_dt_arrays.shape)
-        print("X size: ", all_x_arrays.shape)
-        print("Y size: ", all_y_arrays.shape)
-        print("RY size: ", all_ry_arrays.shape, '\n')
+        # print("r: ", r)
+        # print("t size: ", all_dt_arrays.shape)
+        # print("X size: ", all_x_arrays.shape)
+        # print("Y size: ", all_y_arrays.shape)
+        # print("RY size: ", all_ry_arrays.shape, '\n')
 
         speed = []
         theta = []
@@ -242,6 +259,9 @@ else:
     loaded = np.load(FOLDER_FILES + "/../animation_dataset_dump.npz")
     speed_arrays.insert(0, loaded['dataset_speed'])
     theta_arrays.insert(0, loaded['dataset_theta'])
+    if (not os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz")):
+        print("different_motion_dump.npz is missing. Terminating program...")
+        exit()
     loaded = np.load(FOLDER_FILES + "/../different_motion_dump.npz", allow_pickle=True)
     color_array = loaded['color_array']
     dataset_speeds = loaded['dataset_speeds']
@@ -310,8 +330,8 @@ for i, r in enumerate(radiuses):
     #speed = speed_arrays[i + 1]
     #theta = theta_arrays[i + 1]
 
-    speed = np.asarray(trial_speed)
-    theta = np.asarray(trial_theta)
+    speed = np.asarray(trial_speed, dtype=object)
+    theta = np.asarray(trial_theta, dtype=object)
 
     fig_ts = plt.figure()
     plt.ylabel("Turning speed (degrees/s)")
@@ -351,6 +371,11 @@ for i, r in enumerate(radiuses):
         writer.writerow([speed])
     
     file.close()
+    plt.close('all')
 
     if (PLOT_ENABLED):
         plt.show()
+
+print(25*'*')
+print(sys.argv[0], "end")
+print(25*'*')

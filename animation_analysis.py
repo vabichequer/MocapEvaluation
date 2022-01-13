@@ -6,6 +6,9 @@ import collections
 import numpy as np
 import sys
 
+def floatToString(inputValue):
+    return ('%.15f' % inputValue).rstrip('0').rstrip('.')
+
 def read_csv(radius, prefix="", sufixes=""):
     frame_collection = []
     frame = []
@@ -42,7 +45,7 @@ def PieChart(labels, sizes):
     fig = plt.figure()
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     plt.pie(sizes, labels=labels, autopct='%1.1f%%',
-            shadow=True, startangle=90)
+            shadow=True, startangle=90, normalize=True)
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
     return fig
@@ -66,15 +69,19 @@ def write_csv(name, info):
     
     f.close()
 
+print(25*'*')
+print(sys.argv[0], "start")
+print(25*'*')
+
 PLOT_ENABLED = eval(sys.argv[1])
-print(PLOT_ENABLED)
+print("Plot enabled? ", PLOT_ENABLED)
 
 if (len(sys.argv) > 2):
     FOLDER_FILES = str(Path(sys.argv[2]))
+    radiuses = [floatToString(float(x)) for x in sys.argv[3].split(',')]
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/5"))
-
-radiuses = [5, 10, 15]
+    radiuses = [5, 10, 15]
 
 if (os.path.isdir(FOLDER_FILES + '/images/')):
     pass
@@ -96,15 +103,15 @@ for r in radiuses:
                 
     occurences_clips = collections.Counter(clips)
     occurences_statuses = collections.Counter(blend_statuses)
-    print(occurences_clips)
-    print(occurences_statuses)
+    #print(occurences_clips)
+    #print(occurences_statuses)
 
     labels = ['Used', 'Not used']
     sizes = [len(occurences_clips), 37]
     fig = PieChart(labels, sizes)
-    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_used_vs_unused_animations.svg")
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_used_vs_unused_animations.png")
     fig = PieChart(occurences_statuses.keys(), occurences_statuses.values())
-    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_animation_statuses.svg")
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_animation_statuses.png")
 
     clips = np.asarray(clips)
     transition_locations = np.where(np.roll(clips,1)!=clips)[0]
@@ -118,7 +125,7 @@ for r in radiuses:
     barlist = plt.bar(occurences_clips.keys(), occurences_clips.values(), color='b')
     autolabel(barlist)
     barlist[-1].set_color('r')
-    bar_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_occurences.svg")
+    bar_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_occurences.png")
 
     
 
@@ -128,7 +135,7 @@ for r in radiuses:
 
     labels = ["Pure animation", "Blending animations"]
     fig = PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
-    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_blend_vs_pure_animations.svg")
+    fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_blend_vs_pure_animations.png")
 
     nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
 
@@ -138,3 +145,8 @@ for r in radiuses:
     
     if (PLOT_ENABLED):
         plt.show()
+
+
+print(25*'*')
+print(sys.argv[0], "end")
+print(25*'*')
