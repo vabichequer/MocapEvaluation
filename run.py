@@ -8,8 +8,13 @@ import numpy as np
 from numpy.testing._private.utils import tempdir
 import pandas as pd
 import math
+import seaborn as sns
+import pandas as pd
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/new/Mixamo/"))
+
+def floatToString(inputValue):
+    return ('%.15f' % inputValue).rstrip('0').rstrip('.')
 
 def PieChart(labels, sizes):
     fig = plt.figure()
@@ -82,10 +87,17 @@ def AdditionalPlots(radiuses, path):
     if (PLOT_ENABLED):
         plt.show()
 
-def CallMainProgram(speed, orientation, temp_r, time_windows):
+def ProcessData(speed, orientation, temp_r, time_windows, dp, error):
     path = FOLDER_FILES + '/' + speed + '/' + orientation + '/'
     os.system('python C:/Users/vabicheq/Documents/mocap-evaluation/animation_analysis.py False ' + path + ' ' + temp_r)
     os.system('python C:/Users/vabicheq/Documents/mocap-evaluation/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path)
+    
+    radiuses = [floatToString(float(x)) for x in temp_r.split(',')]
+    for r in radiuses:
+        loaded = np.load(path + str(r) + "_desiredPoint_and_error.npz")
+        loaded['dp']
+        dp.append(loaded['dp'])
+        error.append(loaded['error'])
 
 if (len(sys.argv) > 1):
     PLOT_ENABLED = eval(sys.argv[1])
@@ -98,36 +110,60 @@ speeds = read_root("linearspeeds")
 r = iter(radiuses)
 c = next(r)
 
-for speed in speeds:    
-    temp_r = ""
-    time_windows = "1,"
-    while c < 0:
-        #right
-        temp_r += str(abs(c)) + ','
-        time_windows += "1,"
-        c = next(r)
+desired_points = []
+std_linear_and_angular_errors = []
 
-    CallMainProgram(speed, "Right", temp_r[:-1], time_windows[:-1])
-
-    temp_r = ""
-    time_windows = "1,"
-    while c == 0:
-        #straight
-        temp_r += str(c) + ','
-        time_windows += "1,"
-        c = next(r)
-
-    CallMainProgram(speed, "Straight", temp_r[:-1], time_windows[:-1])
-    
-    temp_r = ""
-    time_windows = "1,"
-    while c > 0:
-        #left
-        temp_r += str(c) + ','
-        time_windows += "1,"
-        try:
+if(os.path.isfile(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")):
+    loaded = np.load(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")
+    desired_points = loaded['all_dps']
+    std_linear_and_angular_errors = loaded['all_std_errors']
+else:
+    for speed in speeds:    
+        temp_r = ""
+        time_windows = "1,"
+        while c < 0:
+            #right
+            temp_r += str(abs(c)) + ','
+            time_windows += "1,"
             c = next(r)
-        except:
-            break
-    
-    CallMainProgram(speed, "Left", temp_r[:-1], time_windows[:-1])
+
+        ProcessData(speed, "Right", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+
+        temp_r = ""
+        time_windows = "1,"
+        while c == 0:
+            #straight
+            temp_r += str(c) + ','
+            time_windows += "1,"
+            c = next(r)
+
+        ProcessData(speed, "Straight", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+        
+        temp_r = ""
+        time_windows = "1,"
+        while c > 0:
+            #left
+            temp_r += str(c) + ','
+            time_windows += "1,"
+            try:
+                c = next(r)
+            except:
+                break
+        
+        ProcessData(speed, "Left", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+
+    np.savez_compressed(FOLDER_FILES + "/all_desiredPoints_and_errors", all_dps=desired_points, all_std_errors=std_linear_and_angular_errors)
+
+loaded = np.load(FOLDER_FILES + "/coverage_plot.npz", allow_pickle=True)
+data = loaded['data'].item()
+z = loaded['z']
+data = pd.DataFrame(data=data)
+coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
+
+for dp, std in zip(desired_points, std_linear_and_angular_errors):    
+    std_linear = std[0]
+    std_angular = std[1]
+    plt.errorbar(dp[0], dp[1], xerr=std_angular, yerr=std_linear, color='red', capsize=5.0)
+    coverage.scatter(dp[0], dp[1], color='lime', zorder=2)
+
+plt.show()

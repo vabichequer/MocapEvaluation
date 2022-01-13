@@ -12,6 +12,7 @@ import os
 import itertools
 import random
 import collections
+import pickle
 
 ### ARGUMENTS ###
 # <string> CSV file name
@@ -304,12 +305,14 @@ for i, r in enumerate(radiuses):
     plt.figure(figsize=(16, 9)) 
     plt.rc('axes', axisbelow=True)
     plt.grid(color='grey', linestyle='--', linewidth=1)
-    data = {'theta': dataset_theta, 'speed': dataset_speed}
-    data = pd.DataFrame(data=data)
+    data_dict = {'theta': dataset_theta, 'speed': dataset_speed}
+    data = pd.DataFrame(data=data_dict)
     xy = np.vstack([dataset_theta, dataset_speed])
     z = gaussian_kde(xy)(xy) 
     coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
-
+    path_coverage = str(Path(FOLDER_FILES).parents[1])
+    np.savez_compressed(path_coverage + "/coverage_plot", data=data_dict, z=z)
+    
     # Plot the traejctory points
     # data = {'theta': trial_theta, 'speed': trial_speed}
     # data = pd.DataFrame(data=data)
