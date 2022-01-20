@@ -87,13 +87,18 @@ def AdditionalPlots(radiuses, path):
     if (PLOT_ENABLED):
         plt.show()
 
-def ProcessData(speed, orientation, temp_r, time_windows, dp, error):
+def ProcessData(speed, orientation, temp_r, time_windows, mus, stds, dp, error):
     path = FOLDER_FILES + '/' + speed + '/' + orientation + '/'
     os.system('python C:/Users/vabicheq/Documents/mocap-evaluation/animation_analysis.py False ' + path + ' ' + temp_r)
     os.system('python C:/Users/vabicheq/Documents/mocap-evaluation/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path)
-    
+    os.system('python C:/Users/vabicheq/Documents/mocap-evaluation/offset_graph.py ' + path + ' ' + temp_r)
+
     radiuses = [floatToString(float(x)) for x in temp_r.split(',')]
     for r in radiuses:
+        loaded = np.load(path + str(r) + '_offset_error_mu_std.npy')
+        mus.append(loaded[0])
+        stds.append(loaded[1])
+
         loaded = np.load(path + str(r) + "_desiredPoint_and_error.npz")
         loaded['dp']
         dp.append(loaded['dp'])
@@ -106,6 +111,8 @@ else:
 
 radiuses = [float(x) for x in read_root("radiuses")]
 speeds = read_root("linearspeeds")
+mus = []
+stds = []
 
 r = iter(radiuses)
 c = next(r)
@@ -127,7 +134,7 @@ else:
             time_windows += "1,"
             c = next(r)
 
-        ProcessData(speed, "Right", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+        ProcessData(speed, "Right", temp_r[:-1], time_windows[:-1], mus, stds, desired_points, std_linear_and_angular_errors)
 
         temp_r = ""
         time_windows = "1,"
@@ -137,7 +144,7 @@ else:
             time_windows += "1,"
             c = next(r)
 
-        ProcessData(speed, "Straight", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+        ProcessData(speed, "Straight", temp_r[:-1], time_windows[:-1], mus, stds, desired_points, std_linear_and_angular_errors)
         
         temp_r = ""
         time_windows = "1,"
@@ -150,10 +157,11 @@ else:
             except:
                 break
         
-        ProcessData(speed, "Left", temp_r[:-1], time_windows[:-1], desired_points, std_linear_and_angular_errors)
+        ProcessData(speed, "Left", temp_r[:-1], time_windows[:-1], mus, stds, desired_points, std_linear_and_angular_errors)
 
     np.savez_compressed(FOLDER_FILES + "/all_desiredPoints_and_errors", all_dps=desired_points, all_std_errors=std_linear_and_angular_errors)
 
+plt.figure(figsize=(16, 9))
 loaded = np.load(FOLDER_FILES + "/coverage_plot.npz", allow_pickle=True)
 data = loaded['data'].item()
 z = loaded['z']
@@ -165,5 +173,21 @@ for dp, std in zip(desired_points, std_linear_and_angular_errors):
     std_angular = std[1]
     plt.errorbar(dp[0], dp[1], xerr=std_angular, yerr=std_linear, color='red', capsize=5.0)
     coverage.scatter(dp[0], dp[1], color='lime', zorder=2)
+
+plt.savefig(FOLDER_FILES + "/coverage_plot.png")
+
+desired_points = np.asarray(desired_points)
+
+x = np.unique(desired_points[:,0])
+y = np.unique(desired_points[:,1])
+
+mus = np.asarray(mus)
+
+X, Y = np.meshgrid(x, y)
+mus = mus.reshape((len(y), len(x)))
+plt.contour(X, Y, mus, 45, cmap='RdGy')
+plt.colorbar()
+
+plt.savefig(FOLDER_FILES + "/offset_plot.png")
 
 plt.show()

@@ -3,9 +3,36 @@ import matplotlib.pyplot as plt
 import csv
 from pathlib import Path
 import math
+import sys
+from scipy.stats import norm
+import seaborn as sns
+import pandas as pd
+
+def floatToString(inputValue):
+    return ('%.15f' % inputValue).rstrip('0').rstrip('.')
 
 def magnitude(vector): 
     return math.sqrt(sum(pow(element, 2) for element in vector))
+
+def plotError(error_array):
+    fig = plt.figure()
+    mu, std = norm.fit(error_array)
+    data = {'error': error_array}
+    data = pd.DataFrame(data=data)
+    # Plot the histogram
+    sns.histplot(data, bins=25, stat="probability")
+
+    # Plot the PDF.
+    xmin, xmax = plt.xlim()
+    x = np.linspace(xmin, xmax, 100)
+    p = norm.pdf(x, mu, std)
+    p = p/np.linalg.norm(p)
+    plt.plot(x, p, 'k', linewidth=2)
+    plt.xlabel("Offset error")
+    plt.ylabel("Proportion")
+    title = " Offset error results: mu = %.2f,  std = %.2f" % (mu, std)
+    plt.title(title)
+    return fig, mu, std
 
 def read_csv(read_time, radius, prefix="", sufix=""):
     x = []
@@ -35,9 +62,13 @@ def read_csv(read_time, radius, prefix="", sufix=""):
     else:
         return np.asarray(x), np.asarray(y)
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
-
-radiuses = [5, 10, 15]
+if (len(sys.argv) > 2):
+    FOLDER_FILES = str(Path(sys.argv[1]))
+    radiuses = [floatToString(float(x)) for x in sys.argv[2].split(',')]
+    print("Radiuses: ", radiuses)
+else:
+    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/mixamo/1.5"))
+    radiuses = [5, 10, 15]
 
 x_planned = []
 y_planned = []
@@ -73,31 +104,43 @@ for r in radiuses:
     
     all_distances.append(distances)
 
-fig, axs = plt.subplots(1, 3)
+fig, axs = plt.subplots(1, len(radiuses))
 
-axs = axs.ravel()
+axes = []
+
+if (isinstance(axs, list)):
+    for ax in axs:
+        axes.append(ax)
+else:
+    axes.append(axs)
 
 for i in range(0, len(x_planned)):
-    axs[i].set_title(str(radiuses[i]) + "m radius curve")
-    axs[i].plot(x_final[i], y_final[i], label="final")    
-    axs[i].plot(x_planned[i], y_planned[i], label="planned")    
-    axs[i].grid()
-    axs[i].set_xlabel("X")
-    axs[i].set_ylabel("Y")
-    axs[i].legend()
+    axes[i].set_title(str(radiuses[i]) + "m radius curve")
+    axes[i].plot(x_final[i], y_final[i], label="final")    
+    axes[i].plot(x_planned[i], y_planned[i], label="planned")    
+    axes[i].grid()
+    axes[i].set_xlabel("X")
+    axes[i].set_ylabel("Y")
+    axes[i].legend()
 
-fig, axs = plt.subplots(1, 3)
+fig, axs = plt.subplots(1, len(radiuses))
 
-axs = axs.ravel()
+axes = []
+
+if (isinstance(axs, list)):
+    for ax in axs:
+        axes.append(ax)
+else:
+    axes.append(axs)
 
 for i in range(0, len(radiuses)):
-    axs[i].set_title(str(radiuses[i]) + "m radius curve offset")
-    axs[i].plot(range(0, len(all_distances[i])), all_distances[i], marker="o")
-    axs[i].grid()
-    # Residual sum of squares
-    #anchored_text1 = AnchoredText("Summed Distance Error: " + str(round(np.sum(all_distances[i]), 2)) + "m", loc='lower right')
-    #axs[i].add_artist(anchored_text1)
-    axs[i].set_ylabel("Distance")
-    axs[i].set_xlabel("Trajectory point")
+    axes[i].set_title(str(radiuses[i]) + "m radius curve offset")
+    axes[i].plot(range(0, len(all_distances[i])), all_distances[i], marker="o")
+    axes[i].grid()
+    axes[i].set_ylabel("Distance")
+    axes[i].set_xlabel("Trajectory point")
+    error_fig, mu, std = plotError(distances)
+    with open(FOLDER_FILES + '/' + str(radiuses[i]) + '_offset_error_mu_std.npy', 'wb') as f:
+        np.save(f, np.asarray([mu, std]))
 
-plt.show()
+#plt.show()

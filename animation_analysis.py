@@ -80,8 +80,8 @@ if (len(sys.argv) > 2):
     FOLDER_FILES = str(Path(sys.argv[2]))
     radiuses = [floatToString(float(x)) for x in sys.argv[3].split(',')]
 else:
-    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/5"))
-    radiuses = [5, 10, 15]
+    FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5/"))
+    radiuses = [5]
 
 if (os.path.isdir(FOLDER_FILES + '/images/')):
     pass
@@ -137,7 +137,10 @@ for r in radiuses:
     fig = PieChart(labels, [info["Total time"], occurences_clips["Transitions"] * 0.3])
     fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_blend_vs_pure_animations.png")
 
-    nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
+    if (occurences_clips["Transitions"] != 0):
+        nbr_blended_frames = len(frames) * (info["Total time"] / occurences_clips["Transitions"] * 0.3)
+    else:
+        nbr_blended_frames = 0
 
     write_csv("nbr_blended_frames", [nbr_blended_frames])
     write_csv("nbr_transitions", [occurences_clips['Transitions']])

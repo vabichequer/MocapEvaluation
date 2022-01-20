@@ -11,8 +11,6 @@ import pandas as pd
 import os
 import itertools
 import random
-import collections
-import pickle
 
 ### ARGUMENTS ###
 # <string> CSV file name
