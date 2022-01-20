@@ -1,4 +1,5 @@
 import csv
+from json import load
 import sys
 import os
 from pathlib import Path
@@ -124,6 +125,10 @@ if(os.path.isfile(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")):
     loaded = np.load(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")
     desired_points = loaded['all_dps']
     std_linear_and_angular_errors = loaded['all_std_errors']
+
+    loaded = np.load(FOLDER_FILES + "/all_mus_and_stds.npz")
+    mus = loaded['mus']
+    stds = loaded['stds']
 else:
     for speed in speeds:    
         temp_r = ""
@@ -160,6 +165,7 @@ else:
         ProcessData(speed, "Left", temp_r[:-1], time_windows[:-1], mus, stds, desired_points, std_linear_and_angular_errors)
 
     np.savez_compressed(FOLDER_FILES + "/all_desiredPoints_and_errors", all_dps=desired_points, all_std_errors=std_linear_and_angular_errors)
+    np.savez_compressed(FOLDER_FILES + "/all_mus_and_stds", mus=mus, stds=stds)
 
 plt.figure(figsize=(16, 9))
 loaded = np.load(FOLDER_FILES + "/coverage_plot.npz", allow_pickle=True)
@@ -176,17 +182,23 @@ for dp, std in zip(desired_points, std_linear_and_angular_errors):
 
 plt.savefig(FOLDER_FILES + "/coverage_plot.png")
 
+plt.figure(figsize=(16,9))
+
 desired_points = np.asarray(desired_points)
 
-x = np.unique(desired_points[:,0])
-y = np.unique(desired_points[:,1])
+x = np.unique(np.round(desired_points[:,0], 1))
+y = np.unique(np.round(desired_points[:,1], 1))
 
 mus = np.asarray(mus)
 
 X, Y = np.meshgrid(x, y)
 mus = mus.reshape((len(y), len(x)))
-plt.contour(X, Y, mus, 45, cmap='RdGy')
+contours = plt.contourf(X, Y, mus, cmap='RdGy')
 plt.colorbar()
+plt.clabel(contours, inline=1, fontsize=10)
+
+for dp in desired_points:    
+    plt.scatter(dp[0], dp[1], color='lime', zorder=2)
 
 plt.savefig(FOLDER_FILES + "/offset_plot.png")
 

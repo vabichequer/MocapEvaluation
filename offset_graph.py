@@ -97,18 +97,21 @@ for r in radiuses:
     # This is useful to compare the error generated at every control point
 
     dx = x_p - x_f
-    dy = y_p - y_f
+    if (r == '0'):
+        dy = y_p - y_p
+    else:
+        dy = y_p - y_f
 
     for i in range(0, len(dx)):
         distances.append(magnitude([dx[i], dy[i]]))
     
     all_distances.append(distances)
 
-fig, axs = plt.subplots(1, len(radiuses))
+fig, axs = plt.subplots(1, len(radiuses), figsize=(16,9))
 
 axes = []
 
-if (isinstance(axs, list)):
+if (isinstance(axs, list) or isinstance(axs, np.ndarray)):
     for ax in axs:
         axes.append(ax)
 else:
@@ -123,11 +126,13 @@ for i in range(0, len(x_planned)):
     axes[i].set_ylabel("Y")
     axes[i].legend()
 
-fig, axs = plt.subplots(1, len(radiuses))
+fig.savefig(FOLDER_FILES + "/images/offset_plots.png")
+
+fig, axs = plt.subplots(1, len(radiuses), figsize=(16,9))
 
 axes = []
 
-if (isinstance(axs, list)):
+if (isinstance(axs, list) or isinstance(axs, np.ndarray)):
     for ax in axs:
         axes.append(ax)
 else:
@@ -139,8 +144,10 @@ for i in range(0, len(radiuses)):
     axes[i].grid()
     axes[i].set_ylabel("Distance")
     axes[i].set_xlabel("Trajectory point")
-    error_fig, mu, std = plotError(distances)
+    error_fig, mu, std = plotError(all_distances[i])
+    error_fig.savefig(FOLDER_FILES + "/images/" + str(radiuses[i]) + "_offset_error_distribution.png")
     with open(FOLDER_FILES + '/' + str(radiuses[i]) + '_offset_error_mu_std.npy', 'wb') as f:
         np.save(f, np.asarray([mu, std]))
 
+fig.savefig(FOLDER_FILES + "/images/distance_plots.png")
 #plt.show()
