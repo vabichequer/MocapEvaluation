@@ -100,7 +100,9 @@ for r in radiuses:
 
             if (channel['BlendStatus'] == "Dominant"):
                 clips.append(channel['Primary clip'])                
-                
+
+    with open(FOLDER_FILES + '/' + str(r) + '_dominant_clip_every_frame.npy', 'wb') as f:
+        np.save(f, np.asarray(clips))
     occurences_clips = collections.Counter(clips)
     occurences_statuses = collections.Counter(blend_statuses)
     #print(occurences_clips)
@@ -126,8 +128,6 @@ for r in radiuses:
     autolabel(barlist)
     barlist[-1].set_color('r')
     bar_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_occurences.png")
-
-    
 
     # According to the MxMAnimator and the documentation, the Blend Time is set to 0.3, so it takes 0.3s to fully blenc in
     # an animation. Therefore, every time it changes, you can consider that 0.3s were taken to actually do it. Hence, the

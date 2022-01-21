@@ -59,11 +59,9 @@ PLOT_ENABLED = eval(sys.argv[4])
 
 if (len(sys.argv) > 5):
     FOLDER_FILES = str(Path(sys.argv[5]))
-    prefix = "animation"
     parents = 1
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
-    prefix = "animation"
     parents = 0
 
 csv_file_name = []
@@ -84,6 +82,7 @@ radiuses.insert(0, 0) # for the dataset
 
 speed_arrays = []
 theta_arrays = []
+clip_arrays = []
 color_array = []
 dataset_speeds = []
 dataset_thetas = []
@@ -91,7 +90,8 @@ dt_arrays = []
 
 def read_csv(radius = "", prefix="", sufix="", parents=0):
     info = {}
-    frames = []    
+    frames = []
+    clips = []
     x, y, ry, t = [], [], [], []
     all_x, all_y, all_ry, all_dt = [], [], [], []
 
@@ -108,6 +108,9 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
         if (sufix == "frames"):
             for row in read_csv:
                 frames.append(int(row[0]))
+        if (sufix == "clips"):
+            for row in read_csv:
+                clips.append(row[0])
         if (sufix == "final" or sufix == "dataset"):
             time = 0
             last_size = 0
@@ -135,18 +138,35 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
         return info         
     if (sufix == "frames"):
         return frames
+    if (sufix == "clips"):
+        return clips
     if (sufix == "final" or sufix == "dataset"):
         return np.asarray(all_x, dtype=object), np.asarray(all_y, dtype=object), np.asarray(all_ry, dtype=object), np.asarray(all_dt, dtype=object)
 
-for idx, r in enumerate(radiuses):  
-    if(os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz") and r == 0):
+def sortClipIndexes(all_clips, names):
+    indexes = []
+
+    for clip in all_clips:
+        indexes.append(names.index(clip))
+
+    return np.asarray(indexes, dtype=object)
+
+root_path = str(Path(FOLDER_FILES).parents[1])
+
+for idx, r in enumerate(radiuses):      
+    if(os.path.isfile(root_path + "/animation_dataset_dump.npz") and r == 0):
         print("Animation dataset dump loaded.")
-        pass
     else:
         if (r == 0):
-            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = prefix, sufix = "dataset", parents=parents)
+            all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "animation", sufix = "dataset", parents=parents)
+            clip_indexes = None
+            indexesAvailable = False
         else:
             all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
+            all_clips = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npy")
+            clip_names = read_csv(prefix = "animation", sufix = "clips", parents=parents)
+            clip_indexes = sortClipIndexes(all_clips, clip_names)
+            indexesAvailable = True
 
         # print("r: ", r)
         # print("t size: ", all_dt_arrays.shape)
@@ -156,6 +176,7 @@ for idx, r in enumerate(radiuses):
 
         speed = []
         theta = []
+        clips = []
 
         last_size = 0
 
@@ -177,6 +198,7 @@ for idx, r in enumerate(radiuses):
             speed_acc = []
             theta_acc = []
             time_acc = []
+            clips_acc = []
             frames_last = False
             dtheta = np.diff(all_ry_arrays[i])
 
@@ -223,22 +245,32 @@ for idx, r in enumerate(radiuses):
                         time_acc.append(dt)
                         speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
                         theta_acc.append(dtheta[j] / dt)
+                        if (indexesAvailable):
+                            clips_acc.append(clip_indexes[j])
                         frames_last = True
                     else:
                         speed.append(np.mean(speed_acc))
                         theta.append(np.mean(theta_acc))
+                        if (indexesAvailable):
+                            clips.append(clips_acc)
                         frames_last = False
                         while (sum(time_acc) > time_windows[idx]):
                             time_acc.pop(0)
                             speed_acc.pop(0)
                             theta_acc.pop(0) 
+                            if (indexesAvailable):
+                                clips_acc.pop(0)
                 else:
                     speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
                     theta.append(dtheta[j] / dt)
+                    if (indexesAvailable):
+                        clips.append(clip_indexes[j])
                     
             if (frames_last):     
                 speed.append(np.mean(speed_acc))
                 theta.append(np.mean(theta_acc))
+                if (indexesAvailable):
+                    clips.append(clips_acc)
 
             if (r==0):
                 current_size = len(speed)
@@ -246,26 +278,35 @@ for idx, r in enumerate(radiuses):
                 dataset_speeds.append(speed[last_size:current_size])
                 dataset_thetas.append(theta[last_size:current_size])
                 last_size = current_size
+                clips = None
 
-        speed_arrays.append(np.asarray(speed))
-        theta_arrays.append(np.asarray(theta))
+        speed_arrays.append(np.asarray(speed, dtype=object))
+        theta_arrays.append(np.asarray(theta, dtype=object))
+        clip_arrays.append(np.asarray(clips, dtype=object))
         print("Radius", r, "processed.")
 
-if(not os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz")):
-    np.savez_compressed(FOLDER_FILES + "/../animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
-    np.savez_compressed(FOLDER_FILES + "/../different_motion_dump", color_array=color_array, dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
+if(not os.path.isfile(root_path + "/animation_dataset_dump.npz")):
+    np.savez_compressed(root_path + "/animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
+    np.savez_compressed(root_path + "/different_motion_dump", color_array=color_array, dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
+    np.savez_compressed(root_path + "/clips_arrays_dump", clip_arrays=clip_arrays)
 else:
-    loaded = np.load(FOLDER_FILES + "/../animation_dataset_dump.npz")
+    loaded = np.load(root_path + "/animation_dataset_dump.npz")
     speed_arrays.insert(0, loaded['dataset_speed'])
     theta_arrays.insert(0, loaded['dataset_theta'])
-    if (not os.path.isfile(FOLDER_FILES + "/../animation_dataset_dump.npz")):
+
+    if (not os.path.isfile(root_path + "/different_motion_dump.npz")):
         print("different_motion_dump.npz is missing. Terminating program...")
         exit()
-    loaded = np.load(FOLDER_FILES + "/../different_motion_dump.npz", allow_pickle=True)
+    loaded = np.load(root_path + "/different_motion_dump.npz", allow_pickle=True)
     color_array = loaded['color_array']
     dataset_speeds = loaded['dataset_speeds']
     dataset_thetas = loaded['dataset_thetas']
-
+    
+    if (not os.path.isfile(root_path + "/clips_arrays_dump.npz")):
+        print("clips_arrays_dump.npz is missing. Terminating program...")
+        exit()        
+    loaded = np.load(root_path + "/clips_arrays_dump.npz", allow_pickle=True)
+    clip_arrays = loaded['clip_arrays']
         
 file_nbr = len(csv_file_name)
 
@@ -274,13 +315,38 @@ radiuses.remove(0)
 # different motions
 different_motions = plt.figure(figsize=(16, 9))
 for colors, speeds, thetas in zip(color_array, dataset_speeds, dataset_thetas):
-    #data = {'theta': thetas, 'speed': speeds}
-    #data = pd.DataFrame(data=data)
-    #sns.scatterplot(data=data, x='theta', y='speed', palette=colors)
-    #sns.lineplot(data=data, x='theta', y='speed', palette=colors)
     plt.scatter(thetas, speeds, color=colors, marker=next(marker))
     plt.plot(thetas, speeds, color=colors)
+
+"""
+# All the information is here, but it is TOO slow to be feasible
+ax = plt.gca()
+xmin, xmax = ax.get_xlim()
+ymin, ymax = ax.get_ylim()
+
+count = 0
+contributing_motions = plt.figure(figsize=(16, 9))
+ax = plt.gca()
+ax.set_xlim([xmin, xmax])
+ax.set_ylim([ymin, ymax])
+for i, r in enumerate(radiuses):  
+    trial_clips = clip_arrays[i + 1]
+    count = 0
+
+    if (os.path.isdir(FOLDER_FILES + '/stack/' + str(r) + '/')):
+        pass
+    else:
+        os.makedirs(FOLDER_FILES + '/stack/' + str(r) + '/')
     
+    for all_clips in trial_clips:
+        for clip in all_clips:
+            plt.scatter(dataset_thetas[clip], dataset_speeds[clip], color=color_array[clip], marker=next(marker))
+            plt.plot(dataset_thetas[clip], dataset_speeds[clip], color=color_array[clip])
+
+        contributing_motions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
+        count += 1
+"""
+
 for i, r in enumerate(radiuses):
     info = read_csv(r, sufix = "info")
     frames = read_csv(r, sufix = "frames")
@@ -362,7 +428,7 @@ for i, r in enumerate(radiuses):
     lserror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed_error." + extension)
     different_motions.savefig(FOLDER_FILES + '/images/' + str(r) + "_different_motions." + extension)
     
-    trial_speed = np.asarray(trial_speed)
+    trial_speed = np.asarray(trial_speed, dtype=object)
     
     file = open(FOLDER_FILES + '/' + str(r) + "_speed_dump.csv", 'w', newline='')
 
