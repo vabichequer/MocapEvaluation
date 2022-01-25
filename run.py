@@ -1,16 +1,13 @@
 import csv
-from json import load
 import sys
 import os
 from pathlib import Path
 import matplotlib.pyplot as plt
 import collections
 import numpy as np
-from numpy.testing._private.utils import tempdir
 import pandas as pd
 import math
 import seaborn as sns
-import pandas as pd
 
 FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/new/Mixamo/"))
 

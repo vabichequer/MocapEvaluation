@@ -6,11 +6,15 @@ import sys
 from pathlib import Path
 import seaborn as sns
 from scipy.stats import gaussian_kde, norm
-from scipy.spatial.distance import cdist
+from collections import Counter
 import pandas as pd
 import os
 import itertools
 import random
+
+import warnings
+
+# warnings.simplefilter("error", np.VisibleDeprecationWarning)
 
 ### ARGUMENTS ###
 # <string> CSV file name
@@ -216,29 +220,6 @@ for idx, r in enumerate(radiuses):
                     print("Animation:", i + 1)
                     print("Frame:", j)
                     print(39*"*")
-                    continue
-                    print("dtheta:", dtheta[j])
-                    print("orientation[j]:", all_ry_arrays[i][j])
-                    print("orientation[j - 1]:", all_ry_arrays[i][j - 1])
-                    print("dt:", dt)
-                    print("dtheta/dt:", dtheta[j]/dt)
-
-                    fig, ax = plt.subplots()
-                    plt.plot(x, all_ry_arrays[i], 'o', x, all_ry_arrays[i], label='original')
-                    plt.scatter([j], [all_ry_arrays[i][j]], s = 100, c='r') 
-                    plt.scatter([j - 1], [all_ry_arrays[i][j - 1]], s = 100, c='g') 
-                    plt.legend()
-
-                    for ann in range(0, len(all_x_arrays[i])):
-                        ax.annotate(ann, (x[ann], all_ry_arrays[i][ann]))
-                        
-                    fig, ax = plt.subplots()
-                    plt.plot(all_x_arrays[i], all_y_arrays[i], 'o', all_x_arrays[i], all_y_arrays[i])
-                    
-                    for ann in range(0, len(all_x_arrays[i])):
-                        ax.annotate(ann, (all_x_arrays[i][ann], all_y_arrays[i][ann]))
-
-                    plt.show()
 
                 if (time_windows[idx] > 0):                
                     if (sum(time_acc) <= time_windows[idx]):
@@ -280,17 +261,19 @@ for idx, r in enumerate(radiuses):
                 last_size = current_size
                 clips = None
 
-        speed_arrays.append(np.asarray(speed, dtype=object))
-        theta_arrays.append(np.asarray(theta, dtype=object))
-        clip_arrays.append(np.asarray(clips, dtype=object))
+        speed_arrays.append(np.asarray(speed))
+        theta_arrays.append(np.asarray(theta))
+        clip_arrays.append(np.asarray(clips))
         print("Radius", r, "processed.")
 
 if(not os.path.isfile(root_path + "/animation_dataset_dump.npz")):
-    np.savez_compressed(root_path + "/animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
-    np.savez_compressed(root_path + "/different_motion_dump", color_array=color_array, dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
-    np.savez_compressed(root_path + "/clips_arrays_dump", clip_arrays=clip_arrays)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+        np.savez_compressed(root_path + "/animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
+        np.savez_compressed(root_path + "/different_motion_dump", color_array=color_array, dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
+        np.savez_compressed(root_path + "/clips_arrays_dump", clip_arrays=clip_arrays)
 else:
-    loaded = np.load(root_path + "/animation_dataset_dump.npz")
+    loaded = np.load(root_path + "/animation_dataset_dump.npz", allow_pickle=True)
     speed_arrays.insert(0, loaded['dataset_speed'])
     theta_arrays.insert(0, loaded['dataset_theta'])
 
@@ -318,34 +301,37 @@ for colors, speeds, thetas in zip(color_array, dataset_speeds, dataset_thetas):
     plt.scatter(thetas, speeds, color=colors, marker=next(marker))
     plt.plot(thetas, speeds, color=colors)
 
-"""
-# All the information is here, but it is TOO slow to be feasible
-ax = plt.gca()
-xmin, xmax = ax.get_xlim()
-ymin, ymax = ax.get_ylim()
-
-count = 0
-contributing_motions = plt.figure(figsize=(16, 9))
-ax = plt.gca()
-ax.set_xlim([xmin, xmax])
-ax.set_ylim([ymin, ymax])
 for i, r in enumerate(radiuses):  
     trial_clips = clip_arrays[i + 1]
-    count = 0
 
-    if (os.path.isdir(FOLDER_FILES + '/stack/' + str(r) + '/')):
-        pass
-    else:
-        os.makedirs(FOLDER_FILES + '/stack/' + str(r) + '/')
-    
+    freq_clip = []
+
     for all_clips in trial_clips:
-        for clip in all_clips:
-            plt.scatter(dataset_thetas[clip], dataset_speeds[clip], color=color_array[clip], marker=next(marker))
-            plt.plot(dataset_thetas[clip], dataset_speeds[clip], color=color_array[clip])
+        freqs = Counter(all_clips)
+        freqs_with_zeros = [0] * len(clip_names)
+        for key, value in freqs.items():
+            freqs_with_zeros[key] = value
+                
+        freq_clip.append(freqs_with_zeros)
 
-        contributing_motions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
-        count += 1
-"""
+    summarized_freqs = []
+    summarized_indxs = []
+    last_index = 0
+    last_freq = freq_clip[0]
+    for i, freq in enumerate(freq_clip):
+        if (not np.array_equal(last_freq, freq)):
+            summarized_freqs.append(last_freq)
+            summarized_indxs.append(str(last_index) + " to " + str(i - 1))
+            last_index = i - 1
+
+    summarized_freqs.append(last_freq)
+    summarized_indxs.append(str(last_index) + " to " + str(i - 1))
+    
+    summarized_freqs = np.swapaxes(summarized_freqs,0,1)
+    plt.figure(figsize=(16, 9))
+    ax = plt.gca()  
+    ax = sns.heatmap(summarized_freqs, annot=False, fmt="d", linewidths=.5, linecolor='black', xticklabels=summarized_indxs, yticklabels=True)
+    plt.savefig(FOLDER_FILES + '/images/' + str(r) + "_summarized_animation_frequencies." + extension)
 
 for i, r in enumerate(radiuses):
     info = read_csv(r, sufix = "info")
