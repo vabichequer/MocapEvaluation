@@ -96,6 +96,7 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
     info = {}
     frames = []
     clips = []
+    switching_statuses = []
     x, y, ry, t = [], [], [], []
     all_x, all_y, all_ry, all_dt = [], [], [], []
 
@@ -135,6 +136,9 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
             all_y.append(np.asarray(y[last_size:current_size]))
             all_ry.append(np.asarray(ry[last_size:current_size]))
             all_dt.append(np.diff(t[last_size:current_size]))
+        if (sufix == "switching_status"):
+            for row in read_csv:
+                switching_statuses.append(row[0])
 
     csvfile.close()
         
@@ -146,6 +150,8 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
         return clips
     if (sufix == "final" or sufix == "dataset"):
         return np.asarray(all_x, dtype=object), np.asarray(all_y, dtype=object), np.asarray(all_ry, dtype=object), np.asarray(all_dt, dtype=object)
+    if (sufix == "switching_status"):
+        return switching_statuses
 
 def sortClipIndexes(all_clips, names):
     indexes = []
@@ -203,6 +209,7 @@ for idx, r in enumerate(radiuses):
             theta_acc = []
             time_acc = []
             clips_acc = []
+            raw_speed = []
             frames_last = False
             dtheta = np.diff(all_ry_arrays[i])
 
@@ -221,7 +228,10 @@ for idx, r in enumerate(radiuses):
                     print("Frame:", j)
                     print(39*"*")
 
-                if (time_windows[idx] > 0):                
+                if (r != 0):
+                    raw_speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))     
+
+                if (time_windows[idx] > 0):           
                     if (sum(time_acc) <= time_windows[idx]):
                         time_acc.append(dt)
                         speed_acc.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
@@ -261,6 +271,8 @@ for idx, r in enumerate(radiuses):
                 last_size = current_size
                 clips = None
 
+            np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_raw_speed_dump", raw_speed=raw_speed)
+
         speed_arrays.append(np.asarray(speed))
         theta_arrays.append(np.asarray(theta))
         clip_arrays.append(np.asarray(clips))
@@ -290,7 +302,7 @@ else:
         exit()        
     loaded = np.load(root_path + "/clips_arrays_dump.npz", allow_pickle=True)
     clip_arrays = loaded['clip_arrays']
-        
+
 file_nbr = len(csv_file_name)
 
 radiuses.remove(0)
@@ -336,11 +348,30 @@ for i, r in enumerate(radiuses):
 for i, r in enumerate(radiuses):
     info = read_csv(r, sufix = "info")
     frames = read_csv(r, sufix = "frames")
+    switching_statuses = read_csv(r, sufix = "switching_status")
+    switching_statuses = np.asarray(switching_statuses, dtype=np.int32)
+
+    if (not os.path.isfile(FOLDER_FILES + '/' + str(r) + "_raw_speed_dump.npz")):
+        print(str(r) + "raw_speed_dump.npz is missing. Terminating program...")
+        exit()        
+    loaded = np.load(FOLDER_FILES + '/' + str(r) + "_raw_speed_dump.npz", allow_pickle=True)
+    trial_raw_speed = np.asarray(loaded['raw_speed'], dtype=np.float32)
 
     dataset_speed = speed_arrays[0]
     dataset_theta = theta_arrays[0]
     trial_speed = speed_arrays[i + 1]
     trial_theta = theta_arrays[i + 1]
+    
+    # Plot raw speeds
+    convolution_signals = plt.figure(figsize=(16,9))
+    plt.plot([j for j in range(0, len(switching_statuses))], switching_statuses, label='Switching')
+    plt.plot([j for j in range(0, len(trial_raw_speed))], trial_raw_speed, label='Raw speed')
+
+    convolution = np.convolve(switching_statuses, trial_raw_speed)
+    convolution_plot = plt.figure(figsize=(16, 9))
+    plt.plot([j for j in range(0, len(convolution))], convolution, label='Convolution')
+    plt.legend()
+    #plt.plot([j for j in range(0, len(trial_raw_speed))], switching_statuses - trial_raw_speed, label='Error')
 
     # Calculate speed error
     # Angular
@@ -377,12 +408,6 @@ for i, r in enumerate(radiuses):
 
     np.savez_compressed(FOLDER_FILES + "/" + str(r) + "_desiredPoint_and_error", dp=desiredPoint, error=[std_linear, std_angular])
 
-    # This is in order not to average the speed when transitioning
-    # this needs to be raw data, otherwise I can't pinpoint where
-    # the transition actually occured, because the data is averaged
-    #speed = speed_arrays[i + 1]
-    #theta = theta_arrays[i + 1]
-
     speed = np.asarray(trial_speed, dtype=object)
     theta = np.asarray(trial_theta, dtype=object)
 
@@ -413,6 +438,8 @@ for i, r in enumerate(radiuses):
     aerror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_angular_speed_error." + extension)
     lserror_fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_linear_speed_error." + extension)
     different_motions.savefig(FOLDER_FILES + '/images/' + str(r) + "_different_motions." + extension)
+    convolution_plot.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_plot." + extension)
+    convolution_signals.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_signals." + extension)
     
     trial_speed = np.asarray(trial_speed, dtype=object)
     

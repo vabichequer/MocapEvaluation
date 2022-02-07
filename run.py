@@ -116,6 +116,14 @@ stds = []
 r = iter(radiuses)
 c = next(r)
 
+if (len(sys.argv) > 1):
+    overwrite = eval(sys.argv[1])
+else:
+    overwrite = False
+
+if (overwrite):
+    os.remove(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")
+
 desired_points = []
 std_linear_and_angular_errors = []
 
