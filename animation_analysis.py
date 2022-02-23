@@ -69,6 +69,9 @@ def write_csv(name, info):
     
     f.close()
 
+def pause():
+    programPause = input("Press the <ENTER> key to continue...")
+
 print(25*'*')
 print(sys.argv[0], "start")
 print(25*'*')
@@ -99,10 +102,11 @@ for r in radiuses:
             blend_statuses.append(channel['BlendStatus'])
 
             if (channel['BlendStatus'] == "Dominant"):
-                clips.append(channel['Primary clip'])                
+                clips.append(channel)                
 
-    with open(FOLDER_FILES + '/' + str(r) + '_dominant_clip_every_frame.npy', 'wb') as f:
-        np.save(f, np.asarray(clips))
+    np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame", clips=clips)
+
+"""
     occurences_clips = collections.Counter(clips)
     occurences_statuses = collections.Counter(blend_statuses)
     #print(occurences_clips)
@@ -148,6 +152,7 @@ for r in radiuses:
     
     if (PLOT_ENABLED):
         plt.show()
+"""
 
 
 print(25*'*')

@@ -1,5 +1,4 @@
 import csv
-from signal import pause
 import sys
 import os
 from pathlib import Path
@@ -10,7 +9,9 @@ import pandas as pd
 import math
 import seaborn as sns
 
-FOLDER_FILES = str(Path("/Users/vicenzo/Repos/MotionMatching/Assets/output/Dual/Mixamo"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/Repos/MotionMatching/Assets/output/Dual/Mixamo"))
+
+SCRIPT_PATH = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation"))
 
 def floatToString(inputValue):
     return ('%.15f' % inputValue).rstrip('0').rstrip('.')
@@ -88,9 +89,10 @@ def AdditionalPlots(radiuses, path):
 
 def ProcessData(speed, orientation, temp_r, time_windows, mus, stds, dp, error):
     path = FOLDER_FILES + '/' + speed + '/' + orientation + '/'
-    os.system('python /Users/vicenzo/Repos/mocap-evaluation/animation_analysis.py False ' + path + ' ' + temp_r)
-    os.system('python /Users/vicenzo/Repos/mocap-evaluation/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path)
-    os.system('python /Users/vicenzo/Repos/mocap-evaluation/offset_graph.py ' + path + ' ' + temp_r)
+    print("Processing speeds: ", speed, " in orientation: ", orientation)
+    os.system('python ' + SCRIPT_PATH + '/animation_analysis.py False ' + path + ' ' + temp_r)
+    os.system('python ' + SCRIPT_PATH + '/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path)
+    os.system('python ' + SCRIPT_PATH + '/offset_graph.py ' + path + ' ' + temp_r)
 
     radiuses = [floatToString(float(x)) for x in temp_r.split(',')]
     for r in radiuses:
