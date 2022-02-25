@@ -334,7 +334,7 @@ for speeds, thetas in zip(dataset_speeds, dataset_thetas):
     plt.plot(thetas, speeds, color=randomColor())
 plt.close(different_motions)
 
-for i, r in enumerate(radiuses):  
+for i, r in enumerate(radiuses):
     loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
     all_clips = loaded['clips']
     clip_indexes = [int(item['AnimId']) for item in all_clips]
