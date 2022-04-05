@@ -9,7 +9,7 @@ import pandas as pd
 import math
 import seaborn as sns
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/Repos/MotionMatching/Assets/output/Dual/Mixamo"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation/output/Dual/Mixamo"))
 
 SCRIPT_PATH = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation"))
 
@@ -84,14 +84,11 @@ def AdditionalPlots(radiuses, path):
 
     fig.savefig(path + '/images/' + str(r) + "_blend_vs_transitions.svg")
 
-    if (PLOT_ENABLED):
-        plt.show()
-
 def ProcessData(speed, orientation, temp_r, time_windows, mus, stds, dp, error):
     path = FOLDER_FILES + '/' + speed + '/' + orientation + '/'
     print("Processing speeds: ", speed, " in orientation: ", orientation)
     os.system('python ' + SCRIPT_PATH + '/animation_analysis.py False ' + path + ' ' + temp_r)
-    os.system('python ' + SCRIPT_PATH + '/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path)
+    os.system('python ' + SCRIPT_PATH + '/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path + ' ' + str(overwrite))
     os.system('python ' + SCRIPT_PATH + '/offset_graph.py ' + path + ' ' + temp_r)
 
     radiuses = [floatToString(float(x)) for x in temp_r.split(',')]
@@ -104,11 +101,6 @@ def ProcessData(speed, orientation, temp_r, time_windows, mus, stds, dp, error):
         loaded['dp']
         dp.append(loaded['dp'])
         error.append(loaded['error'])
-
-if (len(sys.argv) > 1):
-    PLOT_ENABLED = eval(sys.argv[1])
-else:
-    PLOT_ENABLED = False
 
 radiuses = [float(x) for x in read_root("radiuses")]
 speeds = read_root("linearspeeds")
@@ -124,7 +116,11 @@ else:
     overwrite = False
 
 if (overwrite):
-    os.remove(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")
+    try:
+        os.remove(FOLDER_FILES + "/all_desiredPoints_and_errors.npz")
+    except FileNotFoundError:
+        print("all_desiredPoints_and_errors.npz already removed.")
+
 
 desired_points = []
 std_linear_and_angular_errors = []

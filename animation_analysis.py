@@ -13,6 +13,7 @@ def read_csv(radius, prefix="", sufixes=""):
     frame_collection = []
     frame = []
     info = {}
+    lastChosenCost = []
     channel = {}
     channel_number = 0
     for sufix in sufixes:
@@ -20,7 +21,9 @@ def read_csv(radius, prefix="", sufixes=""):
             read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
             if (sufix == "stats"):
                 for row in read_csv:
-                    if (len(row) == 2):
+                    if (row[1] == "lastChosenCost"):
+                        lastChosenCost.append(float(row[2]))
+                    elif (len(row) == 2):
                         channel_number = int(row[1])                
                         if (channel_number > 0):
                             frame.append(channel)
@@ -39,7 +42,7 @@ def read_csv(radius, prefix="", sufixes=""):
                 for row in read_csv:
                     info[row[0]] = float(row[1])
         csvfile.close()
-    return frame_collection, info
+    return frame_collection, lastChosenCost, info
 
 def PieChart(labels, sizes):
     fig = plt.figure()
@@ -86,6 +89,8 @@ else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5/"))
     radiuses = [5]
 
+extension = "png"
+
 if (os.path.isdir(FOLDER_FILES + '/images/')):
     pass
 else:
@@ -94,17 +99,33 @@ else:
 for r in radiuses:
     blend_statuses = []
 
-    frames, info = read_csv(r, sufixes=["stats", "info"])
+    frames, lastChosenCost, info = read_csv(r, sufixes=["stats", "info"])
     clips = []
 
+    all_channels = []
+
     for frame in frames:
+        current_channels = []
+        frame_in_transition = []
         for channel in frame:
             blend_statuses.append(channel['BlendStatus'])
+            current_channels.append(channel)
 
             if (channel['BlendStatus'] == "Dominant"):
-                clips.append(channel)                
+                clips.append(channel)
 
+        all_channels.append(current_channels)
+
+    costOverTime = plt.figure(figsize=(16,9))
+    plt.plot(range(len(lastChosenCost)), lastChosenCost)
+    plt.scatter(range(len(lastChosenCost)), lastChosenCost)
+    plt.title("Transition cost over time")
+    plt.xlabel("Frames")
+    plt.ylabel("Transition cost")
+    costOverTime.savefig((FOLDER_FILES + "/images/"  + str(r) + "_cost_over_time." + extension))
+    
     np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame", clips=clips)
+    np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_all_channels", all_channels=all_channels)
 
 """
     occurences_clips = collections.Counter(clips)

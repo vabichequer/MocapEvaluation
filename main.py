@@ -1,4 +1,4 @@
-from lib2to3.pgen2.literals import simple_escapes
+import matplotlib.patches as patches
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 import seaborn as sns
 import scipy.stats as sps
-from collections import Counter
 import pandas as pd
 import os
 import itertools
@@ -71,6 +70,7 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
 
     with open(p + '/' + prefix + str(radius) + "_" + sufix + ".csv", newline='') as csvfile:
         read_csv = csv.reader(csvfile, delimiter=',', quotechar='|')
+        
         if (sufix == "info"):            
             for row in read_csv:
                 info[row[0]] = float(row[1])
@@ -118,11 +118,6 @@ def read_csv(radius = "", prefix="", sufix="", parents=0):
     if (sufix == "switching_status"):
         return switching_statuses
 
-def sortClipFrame(total_frames, animation_idx, global_frame):
-    partial_sum_total_frames = sum(total_frames[0:animation_idx])
-    isolated_frame_number = global_frame - partial_sum_total_frames
-    return int(isolated_frame_number)
-
 def randomColor():
     return (random.random(), random.random(), random.random())
 
@@ -137,6 +132,7 @@ PLOT_ENABLED = eval(sys.argv[4])
 
 if (len(sys.argv) > 5):
     FOLDER_FILES = str(Path(sys.argv[5]))
+    OVERWRITE = eval(sys.argv[6])
     parents = 1
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
@@ -168,6 +164,12 @@ dt_arrays = []
 dataset_raw_ls = []   
 dataset_raw_as = []
 
+if (OVERWRITE):
+    try:
+        os.remove(root_path + "/animation_dataset_dump.npz")
+    except:        
+        print("animation_dataset_dump.npz already removed!")
+
 for idx, r in enumerate(radiuses):      
     if(os.path.isfile(root_path + "/animation_dataset_dump.npz") and r == -1):
         print("Animation dataset dump loaded.")
@@ -198,7 +200,7 @@ for idx, r in enumerate(radiuses):
 
         for i in range(0, len(all_dt_arrays)):    
             dx = np.diff(all_x_arrays[i])
-            dy = np.diff(all_y_arrays[i])  
+            dy = np.diff(all_y_arrays[i])
 
             if (r == -1):
                 for j in range(0, i):
@@ -233,14 +235,13 @@ for idx, r in enumerate(radiuses):
                     print("Radius:", r)
                     print("Animation:", i + 1)
                     print("Frame:", j)
-                    print(39*"*")
-
-                if (r != -1):
-                    raw_speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))    
+                    print(39*"*") 
 
                 if (r == -1):                    
                     dataset_acc_ls.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))
                     dataset_acc_as.append(dtheta[j] / dt) 
+                else:                    
+                    raw_speed.append(magnitude(dx[j - 1] / dt, dy[j - 1] / dt))   
 
                 if (time_windows[idx] > 0):           
                     if (sum(time_acc) <= time_windows[idx]):
@@ -274,7 +275,7 @@ for idx, r in enumerate(radiuses):
                 if (indexesAvailable):
                     clips.append(clips_acc)
 
-            if (r==0):
+            if (r == -1):
                 current_size = len(speed)
                 dataset_speeds.append(speed[last_size:current_size])
                 dataset_thetas.append(theta[last_size:current_size])
@@ -334,43 +335,74 @@ for speeds, thetas in zip(dataset_speeds, dataset_thetas):
     plt.plot(thetas, speeds, color=randomColor())
 plt.close(different_motions)
 
-for i, r in enumerate(radiuses):
-    loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
-    all_clips = loaded['clips']
-    clip_indexes = [int(item['AnimId']) for item in all_clips]
-   
-    # animation used at every frame
+for i, r in enumerate(radiuses):      
     if (os.path.isdir(FOLDER_FILES + '/stack/' + str(r) + '/')):
         pass
     else:
         os.makedirs(FOLDER_FILES + '/stack/' + str(r) + '/')
 
-    count = 0
-    for clip in clip_indexes:
-        contributing_motions = plt.figure(num=1, clear=True)
-        ax = contributing_motions.add_subplot()
+    loaded = np.load(FOLDER_FILES + '/' + str(r) + "_all_channels.npz", allow_pickle=True)
+    all_channels = loaded['all_channels']    
+    
+    transition_frames = []
+    transition_indexes = []
+    dominant_frames = []
+    dominant_idx = []
+    for channels in all_channels:
+        frames = []
+        indexes = []
+        for channel in channels:
+            frames.append(round(float(channel['Time']) * 30))
+            indexes.append(int(channel['AnimId']))
+            if (channel['BlendStatus'] == "Dominant"):
+                dominant_idx.append(int(channel['AnimId']))
+                dominant_frames.append(round(float(channel['Time']) * 30))
+        transition_frames.append(frames)
+        transition_indexes.append(indexes)        
+    
+    # available transitions at every frame
+    count = 0    
+    style = "Simple, tail_width=0.5, head_width=4, head_length=8"
+    kw = dict(arrowstyle=style, color="red")
+    available_transitions = plt.figure(num=1, clear=True, figsize=(16, 16))
 
-        ax.set_title("Clip: " + str(clip))
-        ax.scatter(dataset_thetas[clip], dataset_speeds[clip], color=randomColor(), marker=next(marker))
-        ax.plot(dataset_thetas[clip], dataset_speeds[clip], color=randomColor())
+    for channel_frames, channel_indexes, dom_frame, dom_idx in zip(transition_frames, transition_indexes, dominant_frames, dominant_idx):
+        ax = available_transitions.add_subplot()
 
-        contributing_motions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
+        if (dom_frame >= len(dataset_raw_as[dom_idx])):
+            dom_frame = len(dataset_raw_as[dom_idx]) - 1
+        x_ini, y_ini = dataset_raw_as[dom_idx][dom_frame], dataset_raw_ls[dom_idx][dom_frame]
+
+        plotted_indexes = []
+        for frame, index in zip(channel_frames, channel_indexes):   
+            if (frame >= len(dataset_raw_as[index])):
+                frame = len(dataset_raw_as[index]) - 1    
+            if (index not in plotted_indexes):
+                ax.plot(dataset_raw_as[index], dataset_raw_ls[index], color=randomColor(), zorder=1, alpha=0.5)
+                ax.scatter(dataset_raw_as[index], dataset_raw_ls[index], color=randomColor(), marker=next(marker), label=index, zorder=2, alpha=0.5)
+            ax.scatter(dataset_raw_as[index][frame], dataset_raw_ls[index][frame], color='lime', zorder=3)            
+            x_dst, y_dst = dataset_raw_as[index][frame], dataset_raw_ls[index][frame]
+            curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), **kw, zorder=3)
+            ax.add_patch(curved_arrow)
+            plotted_indexes.append(index)
+
+        ax.legend()
+        available_transitions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
+        available_transitions.clf()
         count += 1
 
-    plt.close(contributing_motions)
-    # frame and clip occurences in each frame
-    startPoseIds = np.asarray([int(item['StartPoseId']) for item in all_clips])
-    ages = np.asarray([float(item['Age']) for item in all_clips])
-    poseInterval = 0.05
-    currentPoseIds = np.around(startPoseIds + (ages / poseInterval))
-    conversionFor30fps = poseInterval / (1 / 30)
-
-    global_frames_at_30fps = np.around(currentPoseIds * conversionFor30fps, decimals=0).astype(int)
-
-    clip_frames = []
-    for AnimId, gf in zip(clip_indexes, global_frames_at_30fps):        
-        clip_frames.append(sortClipFrame(clip_total_frames, AnimId, gf))
+    plt.close(available_transitions)    
+    print("Finished saving available transitions!")
     
+    # frame and clip occurences in each frame
+    loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
+    all_clips = loaded['clips']
+
+    clip_indexes = [int(item['AnimId']) for item in all_clips]
+    clip_time = np.asarray([float(item['Time']) for item in all_clips])
+    clip_frames = np.around(clip_time * 30, decimals=0).astype(int)
+    
+    # trajectory between frames
     frames_and_clips = {}
     for AnimId, cf in zip(clip_indexes, clip_frames):
         if AnimId in frames_and_clips.keys():
@@ -378,35 +410,80 @@ for i, r in enumerate(radiuses):
         else:
             frames_and_clips[AnimId] = [cf]
 
-    # plot every animation
-    if (os.path.isdir(FOLDER_FILES + '/frames_and_clips/' + str(r) + '/')):
-        pass
-    else:
-        os.makedirs(FOLDER_FILES + '/frames_and_clips/' + str(r) + '/')
+    trajectory_between_frames = plt.figure(num=1, clear=True, figsize=(50, 18))
+    ax = trajectory_between_frames.add_subplot()
+    # ax.set_xlim = [-1, len(max(dataset_raw_as, key=len))]
+    # ax.set_ylim = [-1, len(clip_indexes) + 1]
+    plot_order = pd.unique(clip_indexes)
+    ticks = []
+    labels = []
 
-    for clip, frames in frames_and_clips.items():
-        frames_and_clips_img = plt.figure(num=1, clear=True)
-        ax = frames_and_clips_img.add_subplot()
+    max_color = -9999999999999999
+    min_color = +9999999999999999
+    for j, clip in enumerate(plot_order):
+        number_of_frames_in_clip = len(dataset_raw_as[clip])
 
-        ax.plot(dataset_raw_as[clip], dataset_raw_ls[clip], color=randomColor())
+        # plot whole animation
+        y_plot = [j] * number_of_frames_in_clip
+
         colors = []
 
-        for j in range(0, len(dataset_raw_as[clip])):
-            if j in frames:
-                freq = frames.count(j)
+        for k in range(0, number_of_frames_in_clip):
+            frames = frames_and_clips[clip]
+            if k in frames:
+                freq = frames.count(k)
                 colors.append(freq)
-                #plt.scatter(dataset_raw_as[clip][j], dataset_raw_ls[clip][j], c=freq, cmap='autumn', marker=symb)
-                #plt.scatter(dataset_raw_as[clip][j], dataset_raw_ls[clip][j], cmap='hot', marker=symb)
             else:
                 colors.append(0)
-                #plt.scatter(dataset_raw_as[clip][j], dataset_raw_ls[clip][j], color='gray', marker=symb)
 
-        ax.scatter(dataset_raw_as[clip], dataset_raw_ls[clip], c=colors, cmap='plasma')
-        norm = mpl.colors.Normalize(vmin=min(colors),vmax=max(colors))
-        frames_and_clips_img.colorbar(mappable=plt.cm.ScalarMappable(norm=norm, cmap='plasma'), ax=ax)
-        frames_and_clips_img.savefig((FOLDER_FILES + '/frames_and_clips/' + str(r) + '/clip_' + str(clip) + '.' + extension))
-    plt.close(frames_and_clips_img)
-    
+        ax.scatter(range(number_of_frames_in_clip), y_plot, c=colors, cmap='plasma', s=2, marker='.', zorder=3)
+
+        ticks.append(j)
+        labels.append(clip)
+
+        if (max_color < max(colors)):
+            max_color = max(colors)
+        if (min_color > min(colors)):
+            min_color = min(colors)
+
+    norm = mpl.colors.Normalize(vmin=min_color,vmax=max_color)
+    trajectory_between_frames.colorbar(mappable=plt.cm.ScalarMappable(norm=norm, cmap='plasma'), ax=ax)
+
+    ax.set_yticks(ticks, labels)
+
+    style = "Simple, tail_width=0.5, head_width=4, head_length=8"
+
+    x_pair_list = []
+    y_pair_list = []
+
+    for j in range(1, len(clip_frames)):
+        # plot connections
+        kw = dict(arrowstyle=style, color="red")
+        x_ini = clip_frames[j - 1]
+        y_ini = np.where(plot_order == clip_indexes[j - 1])[0][0]
+        x_dst = clip_frames[j]
+        y_dst = np.where(plot_order == clip_indexes[j - 1])[0][0]
+
+        if (clip_indexes[j] != clip_indexes[j - 1]):
+            kw = dict(arrowstyle=style, color="blue")   
+            y_dst = np.where(plot_order == clip_indexes[j])[0][0]
+
+        x_pair = (x_ini, x_dst)
+        y_pair = (y_ini, y_dst)
+
+        x_pair_list.append(x_pair)
+        y_pair_list.append(y_pair)
+
+
+        lw = (x_pair_list.count(x_pair) + x_pair_list.count(y_pair)) / 2
+
+        curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), connectionstyle="arc3,rad=.5", **kw, lw = lw)
+        ax.add_patch(curved_arrow)
+
+    ax.autoscale_view()
+    trajectory_between_frames.set_tight_layout(True)
+    trajectory_between_frames.savefig((FOLDER_FILES + "/images/"  + str(r) + "_trajectory_between_frames." + extension))
+
 gc.collect()
 
 for i, r in enumerate(radiuses):
@@ -464,14 +541,6 @@ for i, r in enumerate(radiuses):
     coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='mako')
     path_coverage = str(Path(FOLDER_FILES).parents[1])
     np.savez_compressed(path_coverage + "/coverage_plot", data=data_dict, z=z)
-    plt.close(dataset_plot)
-    
-    # Plot the traejctory points
-    # data = {'theta': trial_theta, 'speed': trial_speed}
-    # data = pd.DataFrame(data=data)
-    # xy = np.vstack([trial_theta, trial_speed])
-    # z = sps.gaussian_kde(xy)(xy)
-    # coverage = sns.scatterplot(data=data, x='theta', y='speed', c=z, cmap='autumn')
 
     # Plot the desired point
     desiredPoint = [info["Angle speed"], info["Desired linear speed"]]
