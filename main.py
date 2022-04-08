@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 import seaborn as sns
 import scipy.stats as sps
+from scipy.signal import argrelextrema
 import pandas as pd
 import os
 import itertools
@@ -137,6 +138,8 @@ if (len(sys.argv) > 5):
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
     parents = 0
+
+PLOT_AVAILABLE_TRANSITIONS = False
 
 csv_file_name = []
 csv_file_name.append(animation_dataset_file)
@@ -344,55 +347,56 @@ for i, r in enumerate(radiuses):
     loaded = np.load(FOLDER_FILES + '/' + str(r) + "_all_channels.npz", allow_pickle=True)
     all_channels = loaded['all_channels']    
     
-    transition_frames = []
-    transition_indexes = []
-    dominant_frames = []
-    dominant_idx = []
-    for channels in all_channels:
-        frames = []
-        indexes = []
-        for channel in channels:
-            frames.append(round(float(channel['Time']) * 30))
-            indexes.append(int(channel['AnimId']))
-            if (channel['BlendStatus'] == "Dominant"):
-                dominant_idx.append(int(channel['AnimId']))
-                dominant_frames.append(round(float(channel['Time']) * 30))
-        transition_frames.append(frames)
-        transition_indexes.append(indexes)        
-    
-    # available transitions at every frame
-    count = 0    
-    style = "Simple, tail_width=0.5, head_width=4, head_length=8"
-    kw = dict(arrowstyle=style, color="red")
-    available_transitions = plt.figure(num=1, clear=True, figsize=(16, 16))
+    if (PLOT_AVAILABLE_TRANSITIONS):    
+        transition_frames = []
+        transition_indexes = []
+        dominant_frames = []
+        dominant_idx = []
+        for channels in all_channels:
+            frames = []
+            indexes = []
+            for channel in channels:
+                frames.append(round(float(channel['Time']) * 30))
+                indexes.append(int(channel['AnimId']))
+                if (channel['BlendStatus'] == "Dominant"):
+                    dominant_idx.append(int(channel['AnimId']))
+                    dominant_frames.append(round(float(channel['Time']) * 30))
+            transition_frames.append(frames)
+            transition_indexes.append(indexes)        
+        
+        # available transitions at every frame
+        count = 0    
+        style = "Simple, tail_width=0.5, head_width=4, head_length=8"
+        kw = dict(arrowstyle=style, color="red")
+        available_transitions = plt.figure(num=1, clear=True, figsize=(16, 16))
 
-    for channel_frames, channel_indexes, dom_frame, dom_idx in zip(transition_frames, transition_indexes, dominant_frames, dominant_idx):
-        ax = available_transitions.add_subplot()
+        for channel_frames, channel_indexes, dom_frame, dom_idx in zip(transition_frames, transition_indexes, dominant_frames, dominant_idx):
+            ax = available_transitions.add_subplot()
 
-        if (dom_frame >= len(dataset_raw_as[dom_idx])):
-            dom_frame = len(dataset_raw_as[dom_idx]) - 1
-        x_ini, y_ini = dataset_raw_as[dom_idx][dom_frame], dataset_raw_ls[dom_idx][dom_frame]
+            if (dom_frame >= len(dataset_raw_as[dom_idx])):
+                dom_frame = len(dataset_raw_as[dom_idx]) - 1
+            x_ini, y_ini = dataset_raw_as[dom_idx][dom_frame], dataset_raw_ls[dom_idx][dom_frame]
 
-        plotted_indexes = []
-        for frame, index in zip(channel_frames, channel_indexes):   
-            if (frame >= len(dataset_raw_as[index])):
-                frame = len(dataset_raw_as[index]) - 1    
-            if (index not in plotted_indexes):
+            plotted_indexes = []
+            for frame, index in zip(channel_frames, channel_indexes):   
+                if (frame >= len(dataset_raw_as[index])):
+                    frame = len(dataset_raw_as[index]) - 1    
+                #if (index not in plotted_indexes):
                 ax.plot(dataset_raw_as[index], dataset_raw_ls[index], color=randomColor(), zorder=1, alpha=0.5)
                 ax.scatter(dataset_raw_as[index], dataset_raw_ls[index], color=randomColor(), marker=next(marker), label=index, zorder=2, alpha=0.5)
-            ax.scatter(dataset_raw_as[index][frame], dataset_raw_ls[index][frame], color='lime', zorder=3)            
-            x_dst, y_dst = dataset_raw_as[index][frame], dataset_raw_ls[index][frame]
-            curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), **kw, zorder=3)
-            ax.add_patch(curved_arrow)
-            plotted_indexes.append(index)
+                ax.scatter(dataset_raw_as[index][frame], dataset_raw_ls[index][frame], color='lime', zorder=3)            
+                x_dst, y_dst = dataset_raw_as[index][frame], dataset_raw_ls[index][frame]
+                curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), **kw, zorder=3)
+                ax.add_patch(curved_arrow)
+                plotted_indexes.append(index)
 
-        ax.legend()
-        available_transitions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
-        available_transitions.clf()
-        count += 1
+            ax.legend()
+            available_transitions.savefig((FOLDER_FILES + '/stack/' + str(r) + '/' + str(count) + '.' + extension))
+            available_transitions.clf()
+            count += 1
 
-    plt.close(available_transitions)    
-    print("Finished saving available transitions!")
+        plt.close(available_transitions)    
+        print("Finished saving available transitions!")
     
     # frame and clip occurences in each frame
     loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
@@ -492,6 +496,9 @@ for i, r in enumerate(radiuses):
     switching_statuses = read_csv(r, sufix = "switching_status")
     switching_statuses = np.asarray(switching_statuses, dtype=np.int32)
 
+    switching_speeds = switching_statuses * info["Switching linear speed"]
+    switching_speeds[switching_speeds == 0] = info["Desired linear speed"]
+
     if (not os.path.isfile(FOLDER_FILES + '/' + str(r) + "_raw_speed_dump.npz")):
         print(str(r) + "raw_speed_dump.npz is missing. Terminating program...")
         exit()        
@@ -504,21 +511,47 @@ for i, r in enumerate(radiuses):
     trial_theta = theta_arrays[i + 1]
 
     # Convolution
-    if (r != '0'):
+    if (r != 0):
+        s = np.where(np.diff(switching_speeds))[0] + 1
+        offset = round(s[1] / 4)
+        simplified_sw_st = switching_speeds[offset:(s[1] + offset)]
+
         convolution_signals = plt.figure(figsize=(16,9))
-        plt.plot([j for j in range(0, len(switching_statuses))], switching_statuses, label='Switching')
-        plt.plot([j for j in range(0, len(trial_raw_speed))], trial_raw_speed, label='Raw speed')
+        plt.plot(range(0, len(switching_speeds)), switching_speeds, label='Switching')
+        plt.plot(range(0, len(trial_raw_speed)), trial_raw_speed, label='Raw speed')
+        plt.plot(range(0, len(simplified_sw_st)), np.flip(simplified_sw_st), label='Simplified')
+        plt.legend()
         convolution_signals.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_signals." + extension)
         plt.close(convolution_signals)
+        
 
-        s = np.where(np.diff(switching_statuses))[0] + 1
-        simplified_sw_st = switching_statuses[0:s[1]] 
-
-        convolution = np.convolve(simplified_sw_st, trial_raw_speed, mode='valid')
+        convolution = np.convolve(trial_raw_speed, simplified_sw_st, mode='valid')
         convolution_plot = plt.figure(figsize=(16, 9))
-        plt.plot([j for j in range(0, len(convolution))], convolution, label='Convolution')
+        plt.plot(range(0, len(convolution)), convolution, label='Convolution')
+        local_maximas = argrelextrema(convolution, np.greater, order = 100)[0]
+        local_minimas = argrelextrema(convolution, np.less, order = 100)[0]
+
+        labels_maximas = []
+        labels_minimas = []
+
+        for i, (maxima, minima) in enumerate(zip(local_maximas, local_minimas)):
+            labels_maximas.append(abs(s[i] - maxima - offset) / 30) # 30 fps
+            labels_minimas.append(abs(s[i + 1] - minima - offset) / 30)
+
+        plt.scatter(local_maximas, convolution[local_maximas], label='Maximas')
+        plt.scatter(local_minimas, convolution[local_minimas], label='Minimas')
+
+        ax = plt.gca()
+
+        for txt, x, y in zip(labels_maximas, local_maximas, convolution[local_maximas]):
+            ax.annotate(txt, (x, y))
+            
+        for txt, x, y in zip(labels_minimas, local_minimas, convolution[local_minimas]):
+            ax.annotate(txt, (x, y))
+
         plt.legend()
         convolution_plot.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_plot." + extension)
+        
         plt.close(convolution_plot)
 
     # Calculate speed error
