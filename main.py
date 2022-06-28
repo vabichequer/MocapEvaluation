@@ -196,7 +196,7 @@ for idx, r in enumerate(radiuses):
         else:
             all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(r, sufix = "final")
             loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
-            all_clips = loaded['clips']
+            all_clips = loaded['full_clips']
             clip_names, clip_total_frames = read_csv(prefix = "animation", sufix = "clips", parents=parents)
             clip_indexes = [int(item['AnimId']) for item in all_clips]
             indexesAvailable = True
@@ -412,7 +412,7 @@ for i, r in enumerate(radiuses):
     
     # frame and clip occurences in each frame
     loaded = np.load(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame.npz", allow_pickle=True)
-    all_clips = loaded['clips']
+    all_clips = loaded['full_clips']
 
     clip_indexes = [int(item['AnimId']) for item in all_clips]
     clip_time = np.asarray([float(item['Time']) for item in all_clips])
@@ -428,60 +428,91 @@ for i, r in enumerate(radiuses):
 
     plot_order = pd.unique(clip_indexes)
     col_rows = math.ceil(math.sqrt(len(plot_order)))
-    trajectory_between_frames = plt.figure(figsize=(150,150))
+    trajectory_between_frames, ax = plt.subplots(col_rows, col_rows, sharex=True, sharey=True, figsize=(100,100))
 
-    G = nx.MultiDiGraph()
-    node_colors = []
-    edge_color = []
-    distribution = []
-    node_size = []
-    colors = cm.rainbow(np.linspace(0, 1, len(plot_order)))
-    
+    graphs = []
+
     for j, clip in enumerate(plot_order):
         number_of_frames_in_clip = len(dataset_raw_as[clip])
-        distribution.append(number_of_frames_in_clip)
 
-        for k in range(0, number_of_frames_in_clip):       
-            G.add_node(str(str(clip) + '-' + str(k)))
+        # plot whole animation
+        y_plot = [j] * number_of_frames_in_clip
+
+        node_size = []
+
+        for k in range(0, number_of_frames_in_clip):
             frames = frames_and_clips[clip]
-            node_colors.append(colors[j])
             if k in frames:
                 freq = frames.count(k)
-                node_size.append(freq * 40)
+                node_size.append(freq)
             else:
-                node_size.append(40)
+                node_size.append(0)
 
-    edgelist = []
+        G = nx.DiGraph()
+
+        for k in range(0, number_of_frames_in_clip):
+             G.add_node(k)
+
+        graphs.append(G)
+
+    edges_between_graphs = []
+
+    acc_frame = 0
     for j in range(1, len(clip_frames)):
         # plot connections
         ini = clip_frames[j - 1]
         dst = clip_frames[j]
-        
-        if(ini >= len(dataset_raw_as[clip_indexes[j - 1]])):
-            ini = len(dataset_raw_as[clip_indexes[j - 1]]) - 1
-            
-        if(dst >= len(dataset_raw_as[clip_indexes[j]])):
-            dst = len(dataset_raw_as[clip_indexes[j]]) - 1
+        graph_index = np.where(plot_order == clip_indexes[j - 1])[0][0]
 
-        color_idx = np.where(plot_order == clip_indexes[j - 1])[0][0]        
-        
-        G.add_edge(str(str(clip_indexes[j - 1]) + '-' + str(ini)), str(str(clip_indexes[j]) + '-' + str(dst)))
-        edge_color.append(colors[color_idx])
-        edgelist.append((str(str(clip_indexes[j - 1]) + '-' + str(ini)), str(str(clip_indexes[j]) + '-' + str(dst))))
+        if (clip_indexes[j] == clip_indexes[j - 1]): #intra-motion
+            if (ini == dst):
+                ini += acc_frame
+                acc_frame += 1
+                dst += acc_frame
+            else:
+                acc_frame = 0
+            graphs[graph_index].add_edge(ini, dst)
+        else:            
+            second_graph_index = np.where(plot_order == clip_indexes[j])[0][0]
+            edges_between_graphs.append([graph_index, second_graph_index, ini, dst])
 
-    nx.draw_networkx(G, nx.circular_layout(G), edgelist=edgelist, font_size=6, node_size=node_size, arrowsize=20, width=15, edge_color=edge_color, node_color=node_colors)
+    pos = []
+    g_idx = 0
+    for j in range(col_rows):
+        for k in range(col_rows):                        
+            pos.append(nx.circular_layout(graphs[g_idx]))
 
-    ax = trajectory_between_frames.gca()
-    total_frames = sum(distribution)
-    current_angle = 0
-    for j in range(len(plot_order)):
-        angle_length = (distribution[j] / total_frames) * 360
-        arc = patches.Arc((0,0), 2, 2, 0, current_angle, current_angle + angle_length, color=colors[j], lw=500, alpha=0.5, zorder=0)
-        ax.add_artist(arc)
-        current_angle += angle_length
+            nx.draw_networkx(graphs[g_idx], nx.circular_layout(graphs[g_idx]), ax=ax[j][k], font_size=6, node_size=10, arrowsize=20, arrowstyle='->')
+            ax[j][k].set(adjustable='box', aspect='equal')
+            ax[j][k].set_axis_off()            
+            if (g_idx < (len(graphs) - 1)):
+                g_idx += 1
+            else:
+                break
+
+    for edge in edges_between_graphs:        
+        graph_ini, graph_dst, ini, dst = edge
+
+        pos_ini = pos[graph_ini][ini]
+        pos_ini = (pos_ini[0], pos_ini[1])
+        pos_dst = pos[graph_dst][dst]
+        pos_dst = (pos_dst[0], pos_dst[1])
+
+        line, col = np.unravel_index(graph_ini, (col_rows, col_rows))
+        ax_ini = ax[line][col]
+
+        line, col = np.unravel_index(graph_dst, (col_rows, col_rows))
+        ax_dst = ax[line][col]
+
+        con = patches.ConnectionPatch(xyA=pos_ini, xyB=pos_dst, arrowstyle="->", coordsA="data", coordsB="data", axesA=ax_ini, axesB=ax_dst, color="blue")
+        ax_main = plt.gca()
+        ax_main.add_artist(con)
+
+        # curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), connectionstyle="arc3,rad=.5", **kw)
+        # ax.add_patch(curved_arrow)
+        # pass
 
     trajectory_between_frames.savefig((FOLDER_FILES + "/images/"  + str(r) + "_trajectory_between_frames." + extension))
-    pause()
 gc.collect()
 
 for i, r in enumerate(radiuses):

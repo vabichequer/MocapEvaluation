@@ -5,6 +5,7 @@ from pathlib import Path
 import collections
 import numpy as np
 import sys
+import pandas as pd
 
 def floatToString(inputValue):
     return ('%.15f' % inputValue).rstrip('0').rstrip('.')
@@ -100,7 +101,8 @@ for r in radiuses:
     blend_statuses = []
 
     frames, lastChosenCost, info = read_csv(r, sufixes=["stats", "info"])
-    clips = []
+    full_clips = []
+    primary_clips = []
 
     all_channels = []
 
@@ -112,7 +114,8 @@ for r in radiuses:
             current_channels.append(channel)
 
             if (channel['BlendStatus'] == "Dominant"):
-                clips.append(channel)
+                full_clips.append(channel)
+                primary_clips.append(channel['Primary clip'])
 
         all_channels.append(current_channels)
 
@@ -124,24 +127,27 @@ for r in radiuses:
     plt.ylabel("Transition cost")
     costOverTime.savefig((FOLDER_FILES + "/images/"  + str(r) + "_cost_over_time." + extension))
     
-    np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame", clips=clips)
+    np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_dominant_clip_every_frame", full_clips=full_clips)
     np.savez_compressed(FOLDER_FILES + '/' + str(r) + "_all_channels", all_channels=all_channels)
 
-"""
-    occurences_clips = collections.Counter(clips)
+
+    occurences_clips = collections.Counter(primary_clips)
     occurences_statuses = collections.Counter(blend_statuses)
     #print(occurences_clips)
     #print(occurences_statuses)
 
+    
+    total_number_of_clips = len(pd.read_csv(FOLDER_FILES + "/../../animation_clips.csv")) + 1
+
     labels = ['Used', 'Not used']
-    sizes = [len(occurences_clips), 37]
+    sizes = [len(occurences_clips), total_number_of_clips]
     fig = PieChart(labels, sizes)
     fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_used_vs_unused_animations.png")
     fig = PieChart(occurences_statuses.keys(), occurences_statuses.values())
     fig.savefig(FOLDER_FILES + '/images/' + str(r) + "_animation_statuses.png")
 
-    clips = np.asarray(clips)
-    transition_locations = np.where(np.roll(clips,1)!=clips)[0]
+    primary_clips = np.asarray(primary_clips)
+    transition_locations = np.where(np.roll(primary_clips,1)!=primary_clips)[0]
     number_of_transitions = len(transition_locations)    
 
     write_csv("frames", transition_locations)
@@ -173,7 +179,7 @@ for r in radiuses:
     
     if (PLOT_ENABLED):
         plt.show()
-"""
+
 
 
 print(25*'*')
