@@ -137,7 +137,7 @@ for r in radiuses:
     #print(occurences_statuses)
 
     
-    total_number_of_clips = len(pd.read_csv(FOLDER_FILES + "/../../animation_clips.csv")) + 1
+    total_number_of_clips = len(pd.read_csv(FOLDER_FILES + "/../../animation_clips.csv"))
 
     labels = ['Used', 'Not used']
     sizes = [len(occurences_clips), total_number_of_clips]

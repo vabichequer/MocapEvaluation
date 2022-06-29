@@ -472,25 +472,30 @@ for i, r in enumerate(radiuses):
             else:
                 acc_frame = 0
             graphs[graph_index].add_edge(ini, dst)
-        else:            
+
+        else: 
+            acc_frame = 0           
             second_graph_index = np.where(plot_order == clip_indexes[j])[0][0]
             edges_between_graphs.append([graph_index, second_graph_index, ini, dst])
 
     pos = []
     g_idx = 0
     for j in range(col_rows):
-        for k in range(col_rows):                        
+        for k in range(col_rows):                      
             pos.append(nx.circular_layout(graphs[g_idx]))
 
-            nx.draw_networkx(graphs[g_idx], nx.circular_layout(graphs[g_idx]), ax=ax[j][k], font_size=6, node_size=10, arrowsize=20, arrowstyle='->')
-            ax[j][k].set(adjustable='box', aspect='equal')
-            ax[j][k].set_axis_off()            
+            if (isinstance(ax, np.ndarray)):
+                ax = ax[j][k]
+
+            nx.draw_networkx(graphs[g_idx], nx.circular_layout(graphs[g_idx]), ax=ax, font_size=6, node_size=10, arrowsize=20, arrowstyle='->')
+            ax.set(adjustable='box', aspect='equal')
+            ax.set_axis_off()            
             if (g_idx < (len(graphs) - 1)):
                 g_idx += 1
             else:
                 break
-
-    for edge in edges_between_graphs:        
+    
+    for edge in edges_between_graphs:
         graph_ini, graph_dst, ini, dst = edge
 
         pos_ini = pos[graph_ini][ini]
@@ -499,18 +504,18 @@ for i, r in enumerate(radiuses):
         pos_dst = (pos_dst[0], pos_dst[1])
 
         line, col = np.unravel_index(graph_ini, (col_rows, col_rows))
-        ax_ini = ax[line][col]
+        if (isinstance(ax, np.ndarray)):
+            ax = ax[line][col]
+        ax_ini = ax
 
         line, col = np.unravel_index(graph_dst, (col_rows, col_rows))
-        ax_dst = ax[line][col]
+        if (isinstance(ax, np.ndarray)):
+            ax = ax[line][col]
+        ax_dst = ax
 
         con = patches.ConnectionPatch(xyA=pos_ini, xyB=pos_dst, arrowstyle="->", coordsA="data", coordsB="data", axesA=ax_ini, axesB=ax_dst, color="blue")
         ax_main = plt.gca()
         ax_main.add_artist(con)
-
-        # curved_arrow = patches.FancyArrowPatch((x_ini, y_ini), (x_dst, y_dst), connectionstyle="arc3,rad=.5", **kw)
-        # ax.add_patch(curved_arrow)
-        # pass
 
     trajectory_between_frames.savefig((FOLDER_FILES + "/images/"  + str(r) + "_trajectory_between_frames." + extension))
 gc.collect()
@@ -534,50 +539,6 @@ for i, r in enumerate(radiuses):
     dataset_theta = theta_arrays[0]
     trial_speed = speed_arrays[i + 1]
     trial_theta = theta_arrays[i + 1]
-
-    # Convolution
-    if (r != 0):
-        s = np.where(np.diff(switching_speeds))[0] + 1
-        offset = round(s[1] / 4)
-        simplified_sw_st = switching_speeds[offset:(s[1] + offset)]
-
-        convolution_signals = plt.figure(figsize=(16,9))
-        plt.plot(range(0, len(switching_speeds)), switching_speeds, label='Switching')
-        plt.plot(range(0, len(trial_raw_speed)), trial_raw_speed, label='Raw speed')
-        plt.plot(range(0, len(simplified_sw_st)), np.flip(simplified_sw_st), label='Simplified')
-        plt.legend()
-        convolution_signals.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_signals." + extension)
-        plt.close(convolution_signals)
-        
-
-        convolution = np.convolve(trial_raw_speed, simplified_sw_st, mode='valid')
-        convolution_plot = plt.figure(figsize=(16, 9))
-        plt.plot(range(0, len(convolution)), convolution, label='Convolution')
-        local_maximas = argrelextrema(convolution, np.greater, order = 100)[0]
-        local_minimas = argrelextrema(convolution, np.less, order = 100)[0]
-
-        labels_maximas = []
-        labels_minimas = []
-
-        for i, (maxima, minima) in enumerate(zip(local_maximas, local_minimas)):
-            labels_maximas.append(abs(s[i] - maxima - offset) / 30) # 30 fps
-            labels_minimas.append(abs(s[i + 1] - minima - offset) / 30)
-
-        plt.scatter(local_maximas, convolution[local_maximas], label='Maximas')
-        plt.scatter(local_minimas, convolution[local_minimas], label='Minimas')
-
-        ax = plt.gca()
-
-        for txt, x, y in zip(labels_maximas, local_maximas, convolution[local_maximas]):
-            ax.annotate(txt, (x, y))
-            
-        for txt, x, y in zip(labels_minimas, local_minimas, convolution[local_minimas]):
-            ax.annotate(txt, (x, y))
-
-        plt.legend()
-        convolution_plot.savefig(FOLDER_FILES + '/images/' + str(r) + "_convolution_plot." + extension)
-        
-        plt.close(convolution_plot)
 
     # Calculate speed error
     # Angular

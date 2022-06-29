@@ -9,7 +9,7 @@ import pandas as pd
 import math
 import seaborn as sns
 
-FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation/output/Dual/DemoMocap"))
+FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation/output/Dual/Vicenzo"))
 
 SCRIPT_PATH = str(Path("C:/Users/vabicheq/Documents/Repos/mocap-evaluation"))
 
