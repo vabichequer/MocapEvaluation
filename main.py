@@ -428,7 +428,13 @@ for i, r in enumerate(radiuses):
 
     plot_order = pd.unique(clip_indexes)
     col_rows = math.ceil(math.sqrt(len(plot_order)))
+
     trajectory_between_frames, ax = plt.subplots(col_rows, col_rows, sharex=True, sharey=True, figsize=(100,100))
+    if (isinstance(ax, np.ndarray)):
+        MULTIPLE_PLOTS = True
+    else:
+        MULTIPLE_PLOTS = False
+        axis = ax
 
     graphs = []
 
@@ -484,12 +490,12 @@ for i, r in enumerate(radiuses):
         for k in range(col_rows):                      
             pos.append(nx.circular_layout(graphs[g_idx]))
 
-            if (isinstance(ax, np.ndarray)):
-                ax = ax[j][k]
+            if (MULTIPLE_PLOTS):
+                axis = ax[j][k]
 
-            nx.draw_networkx(graphs[g_idx], nx.circular_layout(graphs[g_idx]), ax=ax, font_size=6, node_size=10, arrowsize=20, arrowstyle='->')
-            ax.set(adjustable='box', aspect='equal')
-            ax.set_axis_off()            
+            nx.draw_networkx(graphs[g_idx], nx.circular_layout(graphs[g_idx]), ax=axis, font_size=6, node_size=10, arrowsize=20, arrowstyle='->')
+            axis.set(adjustable='box', aspect='equal')
+            axis.set_axis_off()            
             if (g_idx < (len(graphs) - 1)):
                 g_idx += 1
             else:
@@ -504,14 +510,14 @@ for i, r in enumerate(radiuses):
         pos_dst = (pos_dst[0], pos_dst[1])
 
         line, col = np.unravel_index(graph_ini, (col_rows, col_rows))
-        if (isinstance(ax, np.ndarray)):
-            ax = ax[line][col]
-        ax_ini = ax
+        if (MULTIPLE_PLOTS):
+            axis = ax[line][col]
+        ax_ini = axis
 
         line, col = np.unravel_index(graph_dst, (col_rows, col_rows))
-        if (isinstance(ax, np.ndarray)):
-            ax = ax[line][col]
-        ax_dst = ax
+        if (MULTIPLE_PLOTS):
+            axis = ax[line][col]
+        ax_dst = axis
 
         con = patches.ConnectionPatch(xyA=pos_ini, xyB=pos_dst, arrowstyle="->", coordsA="data", coordsB="data", axesA=ax_ini, axesB=ax_dst, color="blue")
         ax_main = plt.gca()
