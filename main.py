@@ -1,3 +1,4 @@
+from logging import root
 import matplotlib.patches as patches
 import numpy as np
 import matplotlib.pyplot as plt
@@ -146,6 +147,7 @@ PLOT_ENABLED = eval(sys.argv[4])
 if (len(sys.argv) > 5):
     FOLDER_FILES = str(Path(sys.argv[5]))
     OVERWRITE = eval(sys.argv[6])
+    orientation = str(Path(sys.argv[7]))
     parents = 1
 else:
     FOLDER_FILES = str(Path("C:/Users/vabicheq/Documents/MotionMatching/Assets/output/Mixamo/1.5"))
@@ -179,15 +181,16 @@ dt_arrays = []
 dataset_raw_ls = []   
 dataset_raw_as = []
 
-if (OVERWRITE):
-    try:
-        os.remove(root_path + "/animation_dataset_dump.npz")
-    except:        
-        print("animation_dataset_dump.npz already removed!")
-
 for idx, r in enumerate(radiuses):      
-    if(os.path.isfile(root_path + "/animation_dataset_dump.npz") and r == -1):
-        print("Animation dataset dump loaded.")
+    if (OVERWRITE):
+        try:
+            os.remove(FOLDER_FILES + '/../' + orientation + "_processing_dump.npz")
+        except:        
+            print("processing_dump.npz already removed!")
+
+    if(os.path.isfile(FOLDER_FILES + '/../' + orientation + "_processing_dump.npz") and r == -1):
+        print("Dump located. Loading...")
+        break
     else:
         if (r == -1):
             all_x_arrays, all_y_arrays, all_ry_arrays, all_dt_arrays = read_csv(prefix = "animation", sufix = "dataset", parents=parents)
@@ -307,17 +310,18 @@ for idx, r in enumerate(radiuses):
 
         print("Radius", r, "processed.")
 
-if(not os.path.isfile(root_path + "/animation_dataset_dump.npz")):
+if(not os.path.isfile(FOLDER_FILES + '/../' + orientation + "_processing_dump.npz")):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-        np.savez_compressed(root_path + "/animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
+        np.savez_compressed(FOLDER_FILES + '/../' + orientation + "_processing_dump", speed_arrays=speed_arrays, theta_arrays=theta_arrays)
+        #np.savez_compressed(root_path + "/animation_dataset_dump", dataset_speed=speed_arrays[0], dataset_theta=theta_arrays[0])
         np.savez_compressed(root_path + "/raw_dataset", dataset_raw_ls=dataset_raw_ls, dataset_raw_as=dataset_raw_as)
         np.savez_compressed(root_path + "/different_motion_dump", dataset_speeds=dataset_speeds, dataset_thetas=dataset_thetas)
         np.savez_compressed(root_path + "/clips_arrays_dump", clip_arrays=clip_arrays)
 else:
-    loaded = np.load(root_path + "/animation_dataset_dump.npz", allow_pickle=True)
-    speed_arrays.insert(0, loaded['dataset_speed'])
-    theta_arrays.insert(0, loaded['dataset_theta'])
+    loaded = np.load(FOLDER_FILES + '/../' + orientation + "_processing_dump.npz", allow_pickle=True)
+    speed_arrays = loaded['speed_arrays']
+    theta_arrays = loaded['theta_arrays']
 
     if (not os.path.isfile(root_path + "/different_motion_dump.npz")):
         print("different_motion_dump.npz is missing. Terminating program...")
@@ -548,7 +552,11 @@ for i, r in enumerate(radiuses):
 
     # Calculate speed error
     # Angular
-    angular_error = trial_theta - info["Angle speed"]
+    if (info["Angle speed"] < 0):
+        angular_error = trial_theta + info["Angle speed"]
+    else:
+        angular_error = trial_theta - info["Angle speed"]        
+
     aerror_fig, mu_angular, std_angular = plotError(angular_error, "Angular")
 
     # Linear

@@ -88,7 +88,7 @@ def ProcessData(speed, orientation, temp_r, time_windows, mus, stds, dp, error):
     path = FOLDER_FILES + '/' + speed + '/' + orientation + '/'
     print("Processing speeds: ", speed, " in orientation: ", orientation)
     os.system('python ' + SCRIPT_PATH + '/animation_analysis.py False ' + path + ' ' + temp_r)
-    os.system('python ' + SCRIPT_PATH + '/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path + ' ' + str(overwrite))
+    os.system('python ' + SCRIPT_PATH + '/main.py animation_dataset.csv ' + temp_r + ' ' + time_windows + ' False ' + path + ' ' + str(overwrite) + ' ' + str(orientation))
     os.system('python ' + SCRIPT_PATH + '/offset_graph.py ' + path + ' ' + temp_r)
     #os.system('python ' + SCRIPT_PATH + '/transition_potential.py ' + FOLDER_FILES + '/')
 
